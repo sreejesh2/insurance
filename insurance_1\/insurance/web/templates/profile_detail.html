@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" 
+                             style="width: 100px; height: 100px;">
+                            <span class="display-4">{{ object.user.first_name|first|upper }}</span>
+                        </div>
+                    </div>
+                    <h5 class="mb-0">{{ object.user.get_full_name }}</h5>
+                    <p class="text-muted">Customer ID: {{ object.customer_id }}</p>
+                    <a href="{% url 'profile_edit' %}" class="btn btn-primary">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Information -->
+        <div class="col-md-9">
+            <!-- Personal Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Personal Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Full Name</label>
+                            <p class="mb-0">{{ object.user.get_full_name }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Email</label>
+                            <p class="mb-0">{{ object.user.email }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Phone Number</label>
+                            <p class="mb-0">{{ object.phone_number }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Date of Birth</label>
+                            <p class="mb-0">{{ object.date_of_birth }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Occupation</label>
+                            <p class="mb-0">{{ object.occupation }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Annual Income</label>
+                            <p class="mb-0">${{ object.annual_income }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Address Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted">Address</label>
+                        <p class="mb-0">{{ object.address }}</p>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="text-muted">City</label>
+                            <p class="mb-0">{{ object.city }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted">State</label>
+                            <p class="mb-0">{{ object.state }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted">ZIP Code</label>
+                            <p class="mb-0">{{ object.zip_code }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Policies -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Policies</h5>
+                    <a href="{% url 'my_policies'%}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if policies %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Policy Number</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Start Date</th>
+                                        <th>Premium</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for policy in policies %}
+                                    <tr>
+                                        <td>{{ policy.policy_number }}</td>
+                                        <td>{{ policy.policy.name }}</td>
+                                        <td>
+                                            <span class="badge {% if policy.status == 'active' %}bg-success{% elif policy.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+                                                {{ policy.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ policy.start_date }}</td>
+                                        <td>${{ policy.premium_amount }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No policies found.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Claims -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Claims</h5>
+                    <a href="" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if claims %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Claim Number</th>
+                                        <th>Filing Date</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for claim in claims %}
+                                    <tr>
+                                        <td>{{ claim.claim_number }}</td>
+                                        <td>{{ claim.filing_date }}</td>
+                                        <td>${{ claim.claim_amount }}</td>
+                                        <td>
+                                            <span class="badge {% if claim.status == 'approved' %}bg-success{% elif claim.status == 'pending' %}bg-warning{% elif claim.status == 'rejected' %}bg-danger{% else %}bg-info{% endif %}">
+                                                {{ claim.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No claims found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

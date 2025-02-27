@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" 
+                             style="width: 100px; height: 100px;">
+                            <span class="display-4">{{ request.user.first_name|first|upper }}</span>
+                        </div>
+                    </div>
+                    <h5 class="mb-0">{{ request.user.get_full_name }}</h5>
+                    <p class="text-muted">Customer ID: {{ request.user.customer.customer_id }}</p>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'profile' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user me-2"></i> Profile Overview
+                    </a>
+                    <a href="" class="list-group-item list-group-item-action">
+                        <i class="fas fa-file-contract me-2"></i> My Policies
+                    </a>
+                    <a href="" class="list-group-item list-group-item-action">
+                        <i class="fas fa-clipboard-list me-2"></i> My Claims
+                    </a>
+                    <a href="" class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder me-2"></i> Documents
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Profile Form -->
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">Edit Profile</h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <h5 class="mb-3">Personal Information</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                {{ user_form.first_name }}
+                                {% if user_form.first_name.errors %}
+                                    <div class="text-danger">{{ user_form.first_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                {{ user_form.last_name }}
+                                {% if user_form.last_name.errors %}
+                                    <div class="text-danger">{{ user_form.last_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                {{ user_form.email }}
+                                {% if user_form.email.errors %}
+                                    <div class="text-danger">{{ user_form.email.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                {{ customer_form.phone_number }}
+                                {% if customer_form.phone_number.errors %}
+                                    <div class="text-danger">{{ customer_form.phone_number.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <h5 class="mb-3">Personal Details</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Date of Birth</label>
+                                {{ customer_form.date_of_birth }}
+                                {% if customer_form.date_of_birth.errors %}
+                                    <div class="text-danger">{{ customer_form.date_of_birth.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Occupation</label>
+                                {{ customer_form.occupation }}
+                                {% if customer_form.occupation.errors %}
+                                    <div class="text-danger">{{ customer_form.occupation.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Annual Income</label>
+                            {{ customer_form.annual_income }}
+                            {% if customer_form.annual_income.errors %}
+                                <div class="text-danger">{{ customer_form.annual_income.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <h5 class="mb-3">Address Information</h5>
+                        <div class="mb-4">
+                            <label class="form-label">Address</label>
+                            {{ customer_form.address }}
+                            {% if customer_form.address.errors %}
+                                <div class="text-danger">{{ customer_form.address.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">City</label>
+                                {{ customer_form.city }}
+                                {% if customer_form.city.errors %}
+                                    <div class="text-danger">{{ customer_form.city.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">State</label>
+                                {{ customer_form.state }}
+                                {% if customer_form.state.errors %}
+                                    <div class="text-danger">{{ customer_form.state.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">ZIP Code</label>
+                                {{ customer_form.zip_code }}
+                                {% if customer_form.zip_code.errors %}
+                                    <div class="text-danger">{{ customer_form.zip_code.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'profile' %}" class="btn btn-light me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

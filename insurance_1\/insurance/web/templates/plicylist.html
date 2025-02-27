@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- Category Header -->
+    <div class="text-center mb-5">
+        <h1 class="display-4">{{ category.name }} Policies</h1>
+        <p class="lead text-muted">{{ category.description }}</p>
+    </div>
+
+    <!-- Policy Cards -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for policy in policies %}
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">{{ policy.name }}</h5>
+                        <span class="badge {% if policy.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ policy.get_status_display }}
+                        </span>
+                    </div>
+                    
+                    <p class="card-text">{{ policy.description|truncatewords:30 }}</p>
+                    
+                    <div class="border-top pt-3 mt-3">
+                        <div class="row mb-2">
+                            <div class="col">
+                                <small class="text-muted">Coverage Amount</small>
+                                <p class="mb-0 fw-bold">₹{{ policy.coverage_amount|floatformat:2 }}</p>
+                            </div>
+                            <div class="col">
+                                <small class="text-muted">Monthly Premium</small>
+                                <p class="mb-0 fw-bold">₹{{ policy.premium_amount|floatformat:2 }}</p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col">
+                                <small class="text-muted">Term Length</small>
+                                <p class="mb-0">{{ policy.term_length }} months</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Policy Details Accordion -->
+                    <div class="accordion accordion-flush" id="accordion-{{ policy.id }}">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#benefits-{{ policy.id }}">
+                                    Benefits
+                                </button>
+                            </h2>
+                            <div id="benefits-{{ policy.id }}" class="accordion-collapse collapse">
+                                <div class="accordion-body">
+                                    {{ policy.benefits|linebreaks }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#conditions-{{ policy.id }}">
+                                    Conditions
+                                </button>
+                            </h2>
+                            <div id="conditions-{{ policy.id }}" class="accordion-collapse collapse">
+                                <div class="accordion-body">
+                                    {{ policy.conditions|linebreaks }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-top-0">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'policy_apply' policy.id %}" class="btn btn-primary">Get Quote</a>
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" 
+                                data-bs-target="#policyModal-{{ policy.id }}">
+                            Learn More
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Policy Detail Modal -->
+        <div class="modal fade" id="policyModal-{{ policy.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ policy.name }} - Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Description</h6>
+                            <p>{{ policy.description }}</p>
+                        </div>
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Benefits</h6>
+                            {{ policy.benefits|linebreaks }}
+                        </div>
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Conditions</h6>
+                            {{ policy.conditions|linebreaks }}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="fw-bold">Coverage Amount</h6>
+                                <p>₹{{ policy.coverage_amount|floatformat:2 }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="fw-bold">Monthly Premium</h6>
+                                <p>₹{{ policy.premium_amount|floatformat:2 }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="fw-bold">Term Length</h6>
+                                <p>{{ policy.term_length }} months</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <a href="{% url 'policy_apply' policy.id %}" class="btn btn-primary">Get Quote</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info" role="alert">
+                No policies are currently available for this category.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

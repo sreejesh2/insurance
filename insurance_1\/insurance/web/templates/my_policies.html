@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">My Insurance Policies</h4>
+                </div>
+                
+                <div class="card-body">
+                    {% if policies %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Policy Number</th>
+                                        <th>Policy Type</th>
+                                        <th>Status</th>
+                                        <th>Premium Amount</th>
+                                        <th>Next Premium</th>
+                                        <th>Coverage Amount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for policy in policies %}
+                                    <tr>
+                                        <td>{{ policy.policy_number }}</td>
+                                        <td>{{ policy.policy.name }}</td>
+                                        <td>
+                                            <span class="badge {% if policy.status == 'active' %}bg-success
+                                                           {% elif policy.status == 'pending' %}bg-warning
+                                                           {% elif policy.status == 'expired' %}bg-danger
+                                                           {% else %}bg-secondary{% endif %}">
+                                                {{ policy.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>₹{{ policy.premium_amount }}</td>
+                                        <td>{{ policy.next_premium_date }}</td>
+                                        <td>₹{{ policy.policy.coverage_amount }}</td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" 
+                                                        type="button" data-bs-toggle="dropdown" 
+                                                        aria-expanded="false">
+                                                    Actions
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'policy_detail' policy.id %}">
+                                                            <i class="fas fa-eye me-2"></i>View Details
+                                                        </a>
+                                                    </li>
+                                                    {% if policy.status == 'active' %}
+                                                    <li>
+                                                        <a class="dropdown-item" href="">
+                                                            <i class="fas fa-file-medical me-2"></i>File Claim
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="">
+                                                            <i class="fas fa-credit-card me-2"></i>Make Payment
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'policy_documents' policy.id %}">
+                                                            <i class="fas fa-folder me-2"></i>Documents
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <img src="{% static 'img/no-policy.svg' %}" alt="No Policies" class="mb-3" style="max-width: 200px;">
+                            <h5>No Policies Found</h5>
+                            <p class="text-muted">You haven't purchased any insurance policies yet.</p>
+                            <a href="{% url 'servise' %}" class="btn btn-primary">
+                                Explore Insurance Plans
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if policies %}
+            <!-- Policy Statistics -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Active Policies</h6>
+                            <h3 class="mb-0">{{ active_policies_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Total Coverage</h6>
+                            <h3 class="mb-0">₹{{ total_coverage }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Monthly Premium</h6>
+                            <h3 class="mb-0">₹{{ total_premium }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Pending Claims</h6>
+                            <h3 class="mb-0">{{ pending_claims }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
