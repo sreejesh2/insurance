@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Customer,Document
+from .models import Customer,Document,InsuranceCategory,InsurancePolicy
 
 class CustomerRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={
@@ -126,3 +126,131 @@ class DocumentUploadForm(forms.ModelForm):
         # Example: If document types are policy-specific, filter them
         if self.policy:
             self.fields['document_type'].queryset = self.policy.get_allowed_document_types()
+
+
+
+class StaffUserForm(forms.ModelForm):
+    password = forms.CharField(widget=forms.PasswordInput())
+    confirm_password = forms.CharField(widget=forms.PasswordInput())
+    
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'password']
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+        
+        if password != confirm_password:
+            raise forms.ValidationError("Passwords do not match")
+        
+        return cleaned_data
+
+def is_superuser(user):
+    return user.is_superuser
+
+class InsuranceCategoryForm(forms.ModelForm):
+    class Meta:
+        model = InsuranceCategory
+        fields = ['name', 'description', 'image', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter category name'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Enter category description'
+            }),
+            'image': forms.FileInput(attrs={
+                'class': 'form-control-file'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+        }
+        labels = {
+            'is_active': 'Active Status',
+        }
+        help_texts = {
+            'name': 'Enter a unique name for this insurance category',
+            'image': 'Upload an image representing this category (optional)',
+            'is_active': 'Check if this category should be active',
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        # Check if name already exists (for create view)
+        if not self.instance.pk and InsuranceCategory.objects.filter(name=name).exists():
+            raise forms.ValidationError("An insurance category with this name already exists.")
+        # For update view, check if name exists excluding current instance
+        elif self.instance.pk and InsuranceCategory.objects.exclude(pk=self.instance.pk).filter(name=name).exists():
+            raise forms.ValidationError("An insurance category with this name already exists.")
+        return name
+    
+
+class InsurancePolicyForm(forms.ModelForm):
+    class Meta:
+        model = InsurancePolicy
+        fields = ['name', 'category', 'description', 'coverage_amount', 
+                  'premium_amount', 'term_length', 'benefits', 
+                  'conditions', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter policy name'
+            }),
+            'category': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Provide policy description'
+            }),
+            'coverage_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': '0.00'
+            }),
+            'premium_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': '0.00'
+            }),
+            'term_length': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Months'
+            }),
+            'benefits': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'List policy benefits'
+            }),
+            'conditions': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'List policy conditions'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+        }
+        labels = {
+            'is_active': 'Active Status',
+        }
+        help_texts = {
+            'coverage_amount': 'Maximum amount covered by this policy',
+            'premium_amount': 'Monthly premium to be paid',
+            'is_active': 'Uncheck to disable this policy',
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        coverage_amount = cleaned_data.get('coverage_amount')
+        premium_amount = cleaned_data.get('premium_amount')
+        
+        if coverage_amount and premium_amount and premium_amount > coverage_amount:
+            raise forms.ValidationError("Premium amount cannot be greater than coverage amount.")
+        
+        return cleaned_data

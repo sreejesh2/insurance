@@ -78,6 +78,7 @@ class CustomerPolicy(models.Model):
     next_premium_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    agent= models.ForeignKey(User,on_delete=models.CASCADE,related_name='policy_agent',null=True,blank= True)
 
     class Meta:
         verbose_name_plural = "Customer Policies"
@@ -128,6 +129,7 @@ class Premium(models.Model):
     transaction_id = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+  
 
     def __str__(self):
         return f"{self.customer_policy.policy_number} - {self.due_date}"
@@ -345,3 +347,8 @@ class PolicyRenewalHistory(models.Model):
     
     def __str__(self):
         return f"{self.customer_policy.policy_number} - {self.renewal_date}"
+
+
+
+
+

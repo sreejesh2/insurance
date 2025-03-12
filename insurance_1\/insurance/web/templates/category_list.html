@@ -1,0 +1,64 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}Insurance Categories{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Insurance Categories</h1>
+        {% if user.is_authenticated %}
+        <a href="{% url 'category_create' %}" class="btn btn-primary">Add New Category</a>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if user.is_staff %}
+    <div class="mb-3">
+        {% if request.GET.show_all == 'true' %}
+        <a href="{% url 'category_list' %}" class="btn btn-outline-secondary btn-sm">Show Active Only</a>
+        {% else %}
+        <a href="{% url 'category_list' %}?show_all=true" class="btn btn-outline-secondary btn-sm">Show All</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="row">
+        {% for category in categories %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100{% if not category.is_active %}border-danger{% endif %}" style="background-color: rgb(186, 219, 247);">
+                {% if category.image %}
+                <img src="{{ category.image.url }}" class="card-img-top" style="width: 4rem; height: 4rem;" alt="{{ category.name }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ category.name }}</h5>
+                    <p class="card-text">{{ category.description|truncatechars:100 }}</p>
+                    {% if not category.is_active %}
+                    <div class="badge bg-danger mb-2">Inactive</div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{% url 'category_detail' category.pk %}" class="btn btn-sm btn-info">View Details</a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'category_update' category.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'category_delete' category.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">No insurance categories found.</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

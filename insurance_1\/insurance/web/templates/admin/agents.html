@@ -1,0 +1,193 @@
+{% extends "admin/admin_base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="page-inner mt-4">
+    <div class="page-header">
+        <h4 class="page-title">Insurance Agents</h4>
+    </div>
+    
+    <!-- Messages/Alerts -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <!-- Create Agent Form Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="card-title">{% if edit_agent %}Edit{% else %}Create New{% endif %} Agent</div>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{% if edit_agent %}{% url 'admin_agent_edit' edit_agent.id %}{% else %}{% url 'admin_agents' %}{% endif %}">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" value="{% if edit_agent %}{{ edit_agent.username }}{% endif %}" required {% if edit_agent %}readonly{% endif %}>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="first_name">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" value="{% if edit_agent %}{{ edit_agent.first_name }}{% endif %}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="last_name">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" value="{% if edit_agent %}{{ edit_agent.last_name }}{% endif %}" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{% if edit_agent %}{{ edit_agent.email }}{% endif %}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="password">{% if edit_agent %}New {% endif %}Password{% if edit_agent %} (leave blank to keep current){% endif %}</label>
+                            <input type="password" class="form-control" id="password" name="password" {% if not edit_agent %}required{% endif %}>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="confirm_password">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" {% if not edit_agent %}required{% endif %}>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">{% if edit_agent %}Update{% else %}Create{% endif %} Agent</button>
+                {% if edit_agent %}
+                    <a href="{% url 'admin_agents' %}" class="btn btn-secondary">Cancel</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    
+    <!-- Agents List Card -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Agent List</div>
+        </div>
+        <div class="card-body">
+            {% if agents %}
+                <div class="table-responsive">
+                    <table id="agents-table" class="display table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Date Joined</th>
+                                <th>Last Login</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in agents %}
+                            <tr>
+                                <td>{{ agent.username }}</td>
+                                <td>{{ agent.get_full_name }}</td>
+                                <td>{{ agent.email }}</td>
+                                <td>{{ agent.date_joined|date:"M d, Y" }}</td>
+                                <td>{% if agent.last_login %}{{ agent.last_login|date:"M d, Y H:i" }}{% else %}Never{% endif %}</td>
+                                <td>
+                                    <div class="form-button-action">
+                                        <a href="{% url 'admin_agent_edit' agent.id %}" class="btn btn-link btn-primary btn-lg" data-toggle="tooltip" title="Edit Agent">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'admin_agent_delete' agent.id %}" class="btn btn-link btn-primary btn-lg" data-toggle="tooltip" title="Delete Agent">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </a>
+                                        <!-- <button type="button" class="btn btn-link btn-danger" data-toggle="modal" data-target="#deleteModal-{{ agent.id }}" data-toggle="tooltip" title="Delete Agent">
+                                            <i class="fa fa-times"></i>
+                                        </button> -->
+                                        
+                                        <!-- Delete Modal for each agent -->
+                                        <!-- <div class="modal fade" id="deleteModal-{{ agent.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel-{{ agent.id }}" aria-hidden="true">
+                                            <div class="modal-dialog" role="document">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="deleteModalLabel-{{ agent.id }}">Confirm Deletion</h5>
+                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                            <span aria-hidden="true">&times;</span>
+                                                        </button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        Are you sure you want to delete agent <strong>{{ agent.get_full_name|default:agent.username }}</strong> ({{ agent.username }})? This action cannot be undone.
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                        <form method="POST" action="{% url 'admin_agent_delete' agent.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div> -->
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fa fa-users fa-4x text-muted"></i>
+                    </div>
+                    <h4>No Agents Found</h4>
+                    <p class="text-muted">You haven't added any insurance agents yet</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable for better table functionality
+        if ($('#agents-table').length) {
+            $('#agents-table').DataTable({
+                "pageLength": 10,
+                "ordering": true,
+                "info": true,
+                "language": {
+                    "emptyTable": "No agents found",
+                    "zeroRecords": "No matching agents found"
+                }
+            });
+        }
+        
+        // Initialize tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+        
+        // Password confirmation validation
+        $('form').on('submit', function(e) {
+            const password = $('#password').val();
+            const confirmPassword = $('#confirm_password').val();
+            
+            if (password && password !== confirmPassword) {
+                e.preventDefault();
+                alert('Passwords do not match!');
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}

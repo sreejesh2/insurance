@@ -1,0 +1,305 @@
+{% extends 'admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} | Insurance Policy{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+<style>
+  .required-field label:after {
+    content: " *";
+    color: red;
+  }
+  .form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+  }
+  .error-feedback {
+    color: #dc3545;
+    font-size: 0.875em;
+    margin-top: 0.25rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+    <a href="{% if object %}{% url 'policy_detail' object.pk %}{% else %}{% url 'policy_list' %}{% endif %}" 
+       class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+      <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back
+    </a>
+  </div>
+
+  <!-- Form Card -->
+  <div class="card shadow mb-4">
+    <div class="card-header py-3">
+      <h6 class="m-0 font-weight-bold text-primary">Policy Information</h6>
+    </div>
+    <div class="card-body">
+      <form method="post" id="policyForm">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+          {% for error in form.non_field_errors %}
+            {{ error }}
+          {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="row">
+          <!-- Name Field -->
+          <div class="col-md-6 mb-3 required-field">
+            <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+            {{ form.name }}
+            {% if form.name.help_text %}
+              <small class="form-text text-muted">{{ form.name.help_text }}</small>
+            {% endif %}
+            {% if form.name.errors %}
+              <div class="error-feedback">
+                {% for error in form.name.errors %}
+                  {{ error }}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <!-- Category Field -->
+          <div class="col-md-6 mb-3 required-field">
+            <label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+            {{ form.category }}
+            {% if form.category.help_text %}
+              <small class="form-text text-muted">{{ form.category.help_text }}</small>
+            {% endif %}
+            {% if form.category.errors %}
+              <div class="error-feedback">
+                {% for error in form.category.errors %}
+                  {{ error }}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="row">
+          <!-- Coverage Amount Field -->
+          <div class="col-md-4 mb-3 required-field">
+            <label for="{{ form.coverage_amount.id_for_label }}">{{ form.coverage_amount.label }}</label>
+            <div class="input-group">
+              <div class="input-group-prepend">
+                <span class="input-group-text">₹</span>
+              </div>
+              {{ form.coverage_amount }}
+            </div>
+            {% if form.coverage_amount.help_text %}
+              <small class="form-text text-muted">{{ form.coverage_amount.help_text }}</small>
+            {% endif %}
+            {% if form.coverage_amount.errors %}
+              <div class="error-feedback">
+                {% for error in form.coverage_amount.errors %}
+                  {{ error }}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <!-- Premium Amount Field -->
+          <div class="col-md-4 mb-3 required-field">
+            <label for="{{ form.premium_amount.id_for_label }}">{{ form.premium_amount.label }}</label>
+            <div class="input-group">
+              <div class="input-group-prepend">
+                <span class="input-group-text">₹</span>
+              </div>
+              {{ form.premium_amount }}
+            </div>
+            {% if form.premium_amount.help_text %}
+              <small class="form-text text-muted">{{ form.premium_amount.help_text }}</small>
+            {% endif %}
+            {% if form.premium_amount.errors %}
+              <div class="error-feedback">
+                {% for error in form.premium_amount.errors %}
+                  {{ error }}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <!-- Term Length Field -->
+          <div class="col-md-4 mb-3 required-field">
+            <label for="{{ form.term_length.id_for_label }}">{{ form.term_length.label }}</label>
+            <div class="input-group">
+              {{ form.term_length }}
+              <div class="input-group-append">
+                <span class="input-group-text">months</span>
+              </div>
+            </div>
+            {% if form.term_length.help_text %}
+              <small class="form-text text-muted">{{ form.term_length.help_text }}</small>
+            {% endif %}
+            {% if form.term_length.errors %}
+              <div class="error-feedback">
+                {% for error in form.term_length.errors %}
+                  {{ error }}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <!-- Description Field -->
+        <div class="mb-4 required-field">
+          <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+          {{ form.description }}
+          {% if form.description.help_text %}
+            <small class="form-text text-muted">{{ form.description.help_text }}</small>
+          {% endif %}
+          {% if form.description.errors %}
+            <div class="error-feedback">
+              {% for error in form.description.errors %}
+                {{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        
+        <!-- Benefits Field -->
+        <div class="mb-4 required-field">
+          <label for="{{ form.benefits.id_for_label }}">{{ form.benefits.label }}</label>
+          {{ form.benefits }}
+          {% if form.benefits.help_text %}
+            <small class="form-text text-muted">{{ form.benefits.help_text }}</small>
+          {% endif %}
+          {% if form.benefits.errors %}
+            <div class="error-feedback">
+              {% for error in form.benefits.errors %}
+                {{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        
+        <!-- Conditions Field -->
+        <div class="mb-4 required-field">
+          <label for="{{ form.conditions.id_for_label }}">{{ form.conditions.label }}</label>
+          {{ form.conditions }}
+          {% if form.conditions.help_text %}
+            <small class="form-text text-muted">{{ form.conditions.help_text }}</small>
+          {% endif %}
+          {% if form.conditions.errors %}
+            <div class="error-feedback">
+              {% for error in form.conditions.errors %}
+                {{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        
+        <!-- Is Active Field -->
+        <div class="form-group form-check mb-4">
+          {{ form.is_active }}
+          <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+            {{ form.is_active.label }}
+          </label>
+          {% if form.is_active.help_text %}
+            <small class="form-text text-muted">{{ form.is_active.help_text }}</small>
+          {% endif %}
+          {% if form.is_active.errors %}
+            <div class="error-feedback">
+              {% for error in form.is_active.errors %}
+                {{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        
+        <hr class="mb-4">
+        
+        <div class="d-flex justify-content-between">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save fa-sm text-white-50 mr-1"></i> {{ button_text|default:"Save Policy" }}
+          </button>
+          <a href="{% if object %}{% url 'policy_detail' object.pk %}{% else %}{% url 'policy_list' %}{% endif %}" 
+             class="btn btn-outline-secondary">
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script>
+  $(document).ready(function() {
+    // Initialize rich text editors with custom configuration
+    $('#{{ form.description.id_for_label }}, #{{ form.benefits.id_for_label }}, #{{ form.conditions.id_for_label }}').summernote({
+      height: 200,
+      toolbar: [
+        ['style', ['bold', 'italic', 'underline', 'clear']],
+        ['font', ['strikethrough', 'superscript', 'subscript']],
+        ['para', ['ul', 'ol', 'paragraph']],
+        ['insert', ['link', 'table', 'hr']],
+        ['view', ['fullscreen', 'codeview', 'help']]
+      ],
+      placeholder: 'Start typing here...',
+      tabsize: 2,
+      callbacks: {
+        onFocus: function() {
+          $(this).parent().find('.note-placeholder').hide();
+        },
+        onBlur: function() {
+          var isEmpty = $(this).summernote('isEmpty');
+          if(isEmpty) {
+            $(this).parent().find('.note-placeholder').show();
+          }
+        }
+      }
+    });
+    
+    // Form validation
+    $('#policyForm').on('submit', function(e) {
+      let valid = true;
+      
+      // Check required fields
+      $('.required-field input, .required-field select, .required-field textarea').each(function() {
+        if ($(this).val() === '') {
+          $(this).addClass('is-invalid');
+          valid = false;
+        } else {
+          $(this).removeClass('is-invalid');
+        }
+      });
+      
+      // Check numeric fields are positive
+      $('#{{ form.coverage_amount.id_for_label }}, #{{ form.premium_amount.id_for_label }}, #{{ form.term_length.id_for_label }}').each(function() {
+        const val = parseFloat($(this).val());
+        if (isNaN(val) || val <= 0) {
+          $(this).addClass('is-invalid');
+          if (!$(this).next('.error-feedback').length) {
+            $(this).after('<div class="error-feedback">Please enter a positive number.</div>');
+          }
+          valid = false;
+        }
+      });
+      
+      // Check premium is less than coverage
+      const coverage = parseFloat($('#{{ form.coverage_amount.id_for_label }}').val());
+      const premium = parseFloat($('#{{ form.premium_amount.id_for_label }}').val());
+      if (!isNaN(premium) && !isNaN(coverage) && premium > coverage) {
+        $('#{{ form.premium_amount.id_for_label }}').addClass('is-invalid');
+        if (!$('#{{ form.premium_amount.id_for_label }}').next('.error-feedback').length) {
+          $('#{{ form.premium_amount.id_for_label }}').after('<div class="error-feedback">Premium cannot exceed coverage amount.</div>');
+        }
+        valid = false;
+      }
+      
+      return valid;
+    });
+  });
+</script>
+{% endblock %}

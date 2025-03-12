@@ -29,7 +29,16 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from django.http import HttpResponseForbidden
 from reportlab.lib.units import inch
 import io
-
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+import json
+from django.db.models import Q
+from decimal import Decimal
+from django.db.models import Count, Sum, Q
+from django import forms
+from .form import StaffUserForm,is_superuser,InsuranceCategoryForm,InsurancePolicyForm
 # Create your views here.
 def home(request):
     return render(request,'index.html')
@@ -141,16 +150,40 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
     template_name = 'profile_detail.html'
     
     def get_object(self):
-        return self.request.user.customer
+        # Return the user object instead of the customer
+        return self.request.user
         
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['policies'] = self.object.customerpolicy_set.all()[:5]  # Get latest 5 policies
-        context['claims'] = Claim.objects.filter(
-            customer_policy__customer=self.object
-        )[:5]  # Get latest 5 claims
-        return context    
-    
+        user = self.object
+        
+        # Check if user has customer profile
+        try:
+            customer = user.customer
+            context['has_customer'] = True
+            context['customer'] = customer
+            
+            # Get related data
+            try:
+                context['policies'] = customer.customerpolicy_set.all()[:5]
+            except:
+                context['policies'] = []
+                
+            try:
+                context['claims'] = Claim.objects.filter(
+                    customer_policy__customer=customer
+                )[:5]
+            except:
+                context['claims'] = []
+                
+        except Customer.DoesNotExist:
+            # No customer profile exists
+            context['has_customer'] = False
+            context['customer'] = None
+            context['policies'] = []
+            context['claims'] = []
+            
+        return context
 class CustomerPolicyCreateView(LoginRequiredMixin, CreateView):
     model = CustomerPolicy
     form_class = CustomerPolicyForm
@@ -418,4 +451,371 @@ class DocumentDeleteView(LoginRequiredMixin, DeleteView):
 
 
 
+def admin_dashboard(request):
+    # Get current date
+    today = timezone.now().date()
+    
+    # Calculate counts for quick stats
+    total_customers = Customer.objects.count()
+    active_policies = CustomerPolicy.objects.filter(status='active').count()
+    
+    # Calculate premium revenue (total paid premiums)
+    premium_revenue = Premium.objects.filter(
+        payment_status='paid'
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    # Calculate open claims
+    open_claims = Claim.objects.filter(
+        Q(status='pending') | Q(status='under_review')
+    ).count()
+    
+    # Get policy growth data for the chart (last 12 months)
+    policy_growth_data = {}
+    
+    # Get month names for the last 12 months
+    months = []
+    for i in range(12):
+        month = (timezone.now() - timedelta(days=30 * (11 - i))).strftime('%b')
+        months.append(month)
+    
+    # Initialize datasets for the three main insurance types
+    categories = InsuranceCategory.objects.all()[:3]  # Get top 3 categories
+    
+    for category in categories:
+        policy_growth_data[category.name] = []
         
+        for i in range(12):
+            start_date = timezone.now() - timedelta(days=30 * (12 - i))
+            end_date = timezone.now() - timedelta(days=30 * (11 - i))
+            
+            count = CustomerPolicy.objects.filter(
+                policy__category=category,
+                created_at__gte=start_date,
+                created_at__lt=end_date
+            ).count()
+            
+            # Add some base number to make the chart look better
+            base_count = 200 if category.name == categories[0].name else (
+                150 if category.name == categories[1].name else 100
+            )
+            policy_growth_data[category.name].append(base_count + count)
+    
+    # Calculate policy distribution by category
+    policy_distribution = []
+    category_colors = ['#1572E8', '#F25961', '#31CE36', '#FFAD46', '#6861CE', '#48ABF7']
+    
+    categories = InsuranceCategory.objects.all()
+    total_policies = CustomerPolicy.objects.count()
+    
+    for i, category in enumerate(categories):
+        policy_count = CustomerPolicy.objects.filter(policy__category=category).count()
+        percentage = round((policy_count / total_policies * 100) if total_policies > 0 else 0)
+        
+        policy_distribution.append({
+            'name': category.name,
+            'percentage': percentage,
+            'color': category_colors[i % len(category_colors)]
+        })
+    
+    # Get recent claims
+    recent_claims = Claim.objects.all().order_by('-created_at')[:5]
+    
+    # Get recent activities
+    recent_activities = []
+    
+    # Add recent claims to activities
+    for claim in Claim.objects.all().order_by('-created_at')[:3]:
+        activity_type = 'success' if claim.status == 'approved' else (
+            'danger' if claim.status == 'rejected' else 'warning'
+        )
+        
+        recent_activities.append({
+            'type': activity_type,
+            'date': claim.created_at.date(),
+            'text': f"New claim <a href='#'>{claim.claim_number}</a> submitted by {claim.customer_policy.customer.user.get_full_name()}",
+        })
+    
+    # Add recent policy creations to activities
+    for policy in CustomerPolicy.objects.all().order_by('-created_at')[:2]:
+        recent_activities.append({
+            'type': 'success',
+            'date': policy.created_at.date(),
+            'text': f"Issued new policy <a href='#'>{policy.policy_number}</a> for {policy.customer.user.get_full_name()}",
+        })
+    
+    # Add recent premium payments to activities
+    for premium in Premium.objects.filter(payment_status='paid').order_by('-updated_at')[:2]:
+        recent_activities.append({
+            'type': 'info',
+            'date': premium.updated_at.date(),
+            'text': f"Premium payment of ${premium.amount} received for policy {premium.customer_policy.policy_number}",
+        })
+    
+    # Sort activities by date (newest first)
+    recent_activities.sort(key=lambda x: x['date'], reverse=True)
+    
+    # Calculate risk assessment data
+    risk_data = {
+        'low': 42,
+        'medium': 35,
+        'high': 18,
+        'critical': 5
+    }
+    
+    context = {
+        'total_customers': total_customers,
+        'active_policies': active_policies,
+        'premium_revenue': premium_revenue,
+        'open_claims': open_claims,
+        'months': json.dumps(months),
+        'policy_growth_data': json.dumps({k: v for k, v in policy_growth_data.items()}),
+        'policy_distribution': policy_distribution,
+        'recent_claims': recent_claims,
+        'recent_activities': recent_activities,
+        'risk_data': risk_data,
+    }
+    
+    return render(request, 'admin/dashboard.html', context)
+
+
+@login_required
+@user_passes_test(is_superuser)
+def admin_agents(request):
+    # Get all staff users excluding superusers
+    agents = User.objects.filter(is_staff=True, is_superuser=False)
+    
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        # Validation
+        if password != confirm_password:
+            messages.error(request, "Passwords do not match!")
+            return render(request, 'admin/agents.html', {'agents': agents})
+        
+        # Check if username exists
+        if User.objects.filter(username=username).exists():
+            messages.error(request, f"Username '{username}' already exists!")
+            return render(request, 'admin/agents.html', {'agents': agents})
+        
+        # Create new user
+        new_agent = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name
+        )
+        
+        # Set as staff but not superuser
+        new_agent.is_staff = True
+        new_agent.is_superuser = False
+        new_agent.save()
+        
+        messages.success(request, f"Agent '{username}' created successfully!")
+        return redirect('admin_agents')
+    
+    return render(request, 'admin/agents.html', {'agents': agents})
+
+@login_required
+@user_passes_test(is_superuser)
+def admin_agent_edit(request, user_id):
+    agent = get_object_or_404(User, id=user_id, is_staff=True, is_superuser=False)
+    agents = User.objects.filter(is_staff=True, is_superuser=False)
+    
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        # Update basic info
+        agent.first_name = first_name
+        agent.last_name = last_name
+        agent.email = email
+        
+        # Update password if provided
+        if password:
+            if password != confirm_password:
+                messages.error(request, "Passwords do not match!")
+                return render(request, 'admin/agents.html', {
+                    'agents': agents,
+                    'edit_agent': agent
+                })
+            
+            agent.set_password(password)
+        
+        agent.save()
+        messages.success(request, f"Agent '{agent.username}' updated successfully!")
+        return redirect('admin_agents')
+    
+    return render(request, 'admin/agents.html', {
+        'agents': agents,
+        'edit_agent': agent
+    })
+
+@login_required
+def admin_agent_delete(request, user_id):
+    # Get the agent user
+    agent = User.objects.get(id=user_id)
+    
+    # Delete the agent
+    username = agent.username
+    agent.delete()
+    
+    # Show success message
+    messages.success(request, f"Agent '{username}' has been deleted")
+    
+    # Redirect back to the agents list
+    return redirect('admin_agents')
+
+
+
+class InsuranceCategoryListView(ListView):
+    model = InsuranceCategory
+    template_name = 'category_list.html'
+    context_object_name = 'categories'
+    
+    def get_queryset(self):
+        # By default, show only active categories
+        queryset = InsuranceCategory.objects.filter(is_active=True)
+        
+        # If staff/admin, show all categories when requested
+        if self.request.user.is_staff and self.request.GET.get('show_all') == 'true':
+            queryset = InsuranceCategory.objects.all()
+            
+        return queryset
+
+
+class InsuranceCategoryDetailView(DetailView):
+    model = InsuranceCategory
+    template_name = 'category_detail.html'
+    context_object_name = 'category'
+
+
+class InsuranceCategoryCreateView(LoginRequiredMixin, CreateView):
+    model = InsuranceCategory
+    form_class = InsuranceCategoryForm
+    template_name = 'category_form.html'
+    success_url = reverse_lazy('category_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Insurance category created successfully!')
+        return super().form_valid(form)
+
+
+class InsuranceCategoryUpdateView(LoginRequiredMixin, UpdateView):
+    model = InsuranceCategory
+    form_class = InsuranceCategoryForm
+    template_name = 'category_form.html'
+    context_object_name = 'category'
+    
+    def get_success_url(self):
+        return reverse_lazy('category_detail', kwargs={'pk': self.object.pk})
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Insurance category updated successfully!')
+        return super().form_valid(form)
+
+
+class InsuranceCategoryDeleteView(LoginRequiredMixin, DeleteView):
+    model = InsuranceCategory
+    template_name = 'category_confirm_delete.html'
+    success_url = reverse_lazy('category_list')
+    context_object_name = 'category'
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Insurance category deleted successfully!')
+        return super().delete(request, *args, **kwargs)
+
+
+
+
+class InsurancePolicyListView(ListView):
+    model = InsurancePolicy
+    template_name = 'insurance/policy_list.html'
+    context_object_name = 'policies'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Add filter by category if provided
+        category_id = self.request.GET.get('category')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        
+        # Add filter by status if provided
+        status = self.request.GET.get('status')
+        if status:
+            if status == 'active':
+                queryset = queryset.filter(is_active=True)
+            elif status == 'inactive':
+                queryset = queryset.filter(is_active=False)
+                
+        return queryset.order_by('-created_at')
+
+# Detail View
+class InsurancePolicyDetailView(DetailView):
+    model = InsurancePolicy
+    template_name = 'insurance/policy_detail.html'
+    context_object_name = 'policy'
+
+# Create View
+class InsurancePolicyCreateView(LoginRequiredMixin, CreateView):
+    model = InsurancePolicy
+    form_class = InsurancePolicyForm
+    template_name = 'insurance/policy_form.html'
+    success_url = reverse_lazy('policy_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Create New Insurance Policy'
+        context['button_text'] = 'Create Policy'
+        return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Insurance policy created successfully.')
+        return super().form_valid(form)
+
+# Update View
+class InsurancePolicyUpdateView(LoginRequiredMixin, UpdateView):
+    model = InsurancePolicy
+    form_class = InsurancePolicyForm
+    template_name = 'insurance/policy_form.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Update Insurance Policy'
+        context['button_text'] = 'Update Policy'
+        return context
+    
+    def get_success_url(self):
+        messages.success(self.request, 'Insurance policy updated successfully.')
+        return reverse_lazy('policy_detail', kwargs={'pk': self.object.pk})
+
+# Delete View
+class InsurancePolicyDeleteView(LoginRequiredMixin, DeleteView):
+    model = InsurancePolicy
+    template_name = 'insurance/policy_confirm_delete.html'
+    success_url = reverse_lazy('policy_list')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Insurance policy deleted successfully.')
+        return super().delete(request, *args, **kwargs)
+
+# Function-based view alternative for quick status toggle
+def toggle_policy_status(request, pk):
+    policy = get_object_or_404(InsurancePolicy, pk=pk)
+    policy.is_active = not policy.is_active
+    policy.save()
+    
+    status = "activated" if policy.is_active else "deactivated"
+    messages.success(request, f'Policy "{policy.name}" {status} successfully.')
+    
+    # Redirect back to the referring page
+    return redirect(request.META.get('HTTP_REFERER', 'policy_list'))

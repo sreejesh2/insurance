@@ -1,0 +1,106 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}{{ policy.name }} | Insurance Policy{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ policy.name }}</h1>
+        <div class="btn-group">
+            <a href="{% url 'policy_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+            <a href="{% url 'policy_edit' policy.pk %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit Policy
+            </a>
+            <a href="{% url 'policy_toggle_status' policy.pk %}" class="btn btn-{% if policy.is_active %}secondary{% else %}success{% endif %}">
+                <i class="fas fa-power-off"></i> {% if policy.is_active %}Deactivate{% else %}Activate{% endif %}
+            </a>
+            <a href="{% url 'policy_delete' policy.pk %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Policy Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Description</h5>
+                        <p>{{ policy.description|linebreaks }}</p>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Benefits</div>
+                                <div class="card-body">
+                                    {{ policy.benefits|linebreaks }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Conditions</div>
+                                <div class="card-body">
+                                    {{ policy.conditions|linebreaks }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Policy Summary</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Category:</th>
+                            <td>{{ policy.category.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Coverage Amount:</th>
+                            <td>${{ policy.coverage_amount|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Premium:</th>
+                            <td>${{ policy.premium_amount|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Term Length:</th>
+                            <td>{{ policy.term_length }} months</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if policy.is_active %}
+                                    <span class="badge badge-success">Active</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Created:</th>
+                            <td>{{ policy.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Last Updated:</th>
+                            <td>{{ policy.updated_at|date:"M d, Y" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

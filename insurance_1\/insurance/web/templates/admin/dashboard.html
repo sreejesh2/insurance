@@ -1,0 +1,470 @@
+{% extends "admin/admin_base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="page-inner mt-4">
+    <div class="page-header">
+        <h4 class="page-title">Insurance Dashboard</h4>
+        <div class="btn-group btn-group-page-header ml-auto">
+            <button type="button" class="btn btn-light btn-round btn-page-header-dropdown dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fa fa-ellipsis-h"></i>
+            </button>
+            <div class="dropdown-menu">
+                <div class="arrow"></div>
+          
+                <a class="dropdown-item" href="javascript:window.print()">Print</a>
+                <a class="dropdown-item" href="{% url 'dashboard' %}">Refresh Data</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats Cards -->
+    <div class="row">
+        <div class="col-sm-6 col-md-3">
+            <div class="card card-stats card-round">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-icon">
+                            <div class="icon-big text-center icon-primary bubble-shadow-small">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="col col-stats ml-3 ml-sm-0">
+                            <div class="numbers">
+                                <p class="card-category">Total Customers</p>
+                                <h4 class="card-title">{{ total_customers|intcomma }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <div class="card card-stats card-round">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-icon">
+                            <div class="icon-big text-center icon-info bubble-shadow-small">
+                                <i class="far fa-file-alt"></i>
+                            </div>
+                        </div>
+                        <div class="col col-stats ml-3 ml-sm-0">
+                            <div class="numbers">
+                                <p class="card-category">Active Policies</p>
+                                <h4 class="card-title">{{ active_policies|intcomma }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <div class="card card-stats card-round">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-icon">
+                            <div class="icon-big text-center icon-success bubble-shadow-small">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                        </div>
+                        <div class="col col-stats ml-3 ml-sm-0">
+                            <div class="numbers">
+                                <p class="card-category">Premium Revenue</p>
+                                <h4 class="card-title">${{ premium_revenue|floatformat:2|intcomma }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <div class="card card-stats card-round">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-icon">
+                            <div class="icon-big text-center icon-warning bubble-shadow-small">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </div>
+                        </div>
+                        <div class="col col-stats ml-3 ml-sm-0">
+                            <div class="numbers">
+                                <p class="card-category">Open Claims</p>
+                                <h4 class="card-title">{{ open_claims|intcomma }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Policy Growth</div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="policyGrowthChart" style="width: 100%; height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Policy Distribution</div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="policyDistributionChart" style="width: 100%; height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activities and Claims -->
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Recent Claims</div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Claim ID</th>
+                                    <th>Customer</th>
+                                    <th>Policy Type</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for claim in recent_claims %}
+                                <tr>
+                                    <td>{{ claim.claim_number }}</td>
+                                    <td>{{ claim.customer_policy.customer.user.get_full_name }}</td>
+                                    <td>{{ claim.customer_policy.policy.category.name }}</td>
+                                    <td>${{ claim.claim_amount|floatformat:2|intcomma }}</td>
+                                    <td>
+                                        {% if claim.status == 'pending' %}
+                                            <span class="badge badge-warning">Pending</span>
+                                        {% elif claim.status == 'under_review' %}
+                                            <span class="badge badge-info">Under Review</span>
+                                        {% elif claim.status == 'approved' %}
+                                            <span class="badge badge-success">Approved</span>
+                                        {% elif claim.status == 'rejected' %}
+                                            <span class="badge badge-danger">Rejected</span>
+                                        {% elif claim.status == 'paid' %}
+                                            <span class="badge badge-primary">Paid</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'admin:insurance_claim_change' claim.id %}" class="btn btn-link btn-primary btn-lg">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No recent claims found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Recent Activities</div>
+                </div>
+                <div class="card-body">
+                    <ol class="activity-feed">
+                        {% for activity in recent_activities %}
+                        <li class="feed-item feed-item-{{ activity.type }}">
+                            <time class="date" datetime="{{ activity.date|date:'Y-m-d' }}">{{ activity.date|date:"M d" }}</time>
+                            <span class="text">{{ activity.text|safe }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="feed-item">
+                            <span class="text">No recent activities found</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Risk Assessment Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Policy Risk Assessment</div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card-counter primary">
+                                <i class="fas fa-shield-alt"></i>
+                                <span class="count-numbers">{{ risk_data.low }}%</span>
+                                <span class="count-name">Low Risk</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card-counter info">
+                                <i class="fas fa-exclamation"></i>
+                                <span class="count-numbers">{{ risk_data.medium }}%</span>
+                                <span class="count-name">Medium Risk</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card-counter warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span class="count-numbers">{{ risk_data.high }}%</span>
+                                <span class="count-name">High Risk</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card-counter danger">
+                                <i class="fas fa-radiation-alt"></i>
+                                <span class="count-numbers">{{ risk_data.critical }}%</span>
+                                <span class="count-name">Critical Risk</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize charts when document is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get data from the server
+        const months = {{ months|safe }};
+        const policyGrowthData = {{ policy_growth_data|safe }};
+        
+        // Extract category names and datasets
+        const categoryNames = Object.keys(policyGrowthData);
+        const datasets = [];
+        
+        // Define colors for different categories
+        const colors = {
+            0: {borderColor: '#1572E8', backgroundColor: 'rgba(21, 114, 232, 0.1)'},
+            1: {borderColor: '#F25961', backgroundColor: 'rgba(242, 89, 97, 0.1)'},
+            2: {borderColor: '#31CE36', backgroundColor: 'rgba(49, 206, 54, 0.1)'}
+        };
+        
+        // Create datasets for the policy growth chart
+        categoryNames.forEach((category, index) => {
+            datasets.push({
+                label: category,
+                borderColor: colors[index].borderColor,
+                pointBackgroundColor: colors[index].borderColor,
+                pointBorderColor: colors[index].borderColor,
+                pointHoverBackgroundColor: colors[index].borderColor,
+                pointHoverBorderColor: colors[index].borderColor,
+                data: policyGrowthData[category],
+                borderWidth: 2,
+                fill: true,
+                backgroundColor: colors[index].backgroundColor
+            });
+        });
+        
+        // Policy Growth Line Chart
+        var policyGrowthCtx = document.getElementById('policyGrowthChart').getContext('2d');
+        var policyGrowthChart = new Chart(policyGrowthCtx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Policies'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Policy Distribution Doughnut Chart
+        var distributionLabels = [];
+        var distributionData = [];
+        var distributionColors = [];
+        
+        {% for item in policy_distribution %}
+            distributionLabels.push('{{ item.name }}');
+            distributionData.push({{ item.percentage }});
+            distributionColors.push('{{ item.color }}');
+        {% endfor %}
+        
+        var policyDistributionCtx = document.getElementById('policyDistributionChart').getContext('2d');
+        var policyDistributionChart = new Chart(policyDistributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: distributionLabels,
+                datasets: [{
+                    data: distributionData,
+                    backgroundColor: distributionColors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+    });
+</script>
+
+<style>
+    .card-counter {
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px 10px;
+        background-color: #fff;
+        height: 120px;
+        border-radius: 5px;
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .card-counter i {
+        font-size: 4em;
+        opacity: 0.2;
+        position: absolute;
+        right: 10px;
+        top: 10px;
+    }
+
+    .card-counter .count-numbers {
+        position: absolute;
+        right: 20px;
+        top: 45px;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    .card-counter .count-name {
+        position: absolute;
+        left: 20px;
+        top: 40px;
+        font-style: italic;
+        text-transform: capitalize;
+        opacity: 0.7;
+        font-weight: bold;
+    }
+
+    .card-counter.primary {
+        background-color: #007bff;
+        color: #FFF;
+    }
+
+    .card-counter.info {
+        background-color: #17a2b8;
+        color: #FFF;
+    }
+
+    .card-counter.warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+    .card-counter.danger {
+        background-color: #dc3545;
+        color: #FFF;
+    }
+
+    .activity-feed {
+        padding: 15px;
+        list-style: none;
+    }
+
+    .activity-feed .feed-item {
+        position: relative;
+        padding-bottom: 20px;
+        padding-left: 30px;
+        border-left: 2px solid #e4e8eb;
+    }
+
+    .activity-feed .feed-item:last-child {
+        border-color: transparent;
+    }
+
+    .activity-feed .feed-item::after {
+        content: "";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: -8px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #e4e8eb;
+    }
+
+    .activity-feed .feed-item-success::after {
+        background-color: #31CE36;
+        border-color: #31CE36;
+    }
+
+    .activity-feed .feed-item-info::after {
+        background-color: #48ABF7;
+        border-color: #48ABF7;
+    }
+
+    .activity-feed .feed-item-warning::after {
+        background-color: #FFAD46;
+        border-color: #FFAD46;
+    }
+
+    .activity-feed .feed-item-danger::after {
+        background-color: #F25961;
+        border-color: #F25961;
+    }
+
+    .activity-feed .date {
+        display: block;
+        position: relative;
+        top: -5px;
+        color: #8c96a3;
+        text-transform: uppercase;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .activity-feed .text {
+        position: relative;
+        top: -3px;
+    }
+</style>
+{% endblock %}
