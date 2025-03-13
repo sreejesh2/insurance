@@ -254,3 +254,91 @@ class InsurancePolicyForm(forms.ModelForm):
             raise forms.ValidationError("Premium amount cannot be greater than coverage amount.")
         
         return cleaned_data
+
+
+
+from django import forms
+from .models import Claim, ClaimDocument
+
+class ClaimForm(forms.ModelForm):
+    class Meta:
+        model = Claim
+        fields = ['incident_date', 'description', 'claim_amount', 'documents']
+        widgets = {
+            'incident_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'claim_amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'documents': forms.FileInput(attrs={'class': 'form-control'})
+        }
+        
+    def clean_incident_date(self):
+        incident_date = self.cleaned_data.get('incident_date')
+        if incident_date and incident_date > timezone.now().date():
+            raise forms.ValidationError("Incident date cannot be in the future.")
+        return incident_date
+    
+    def clean_claim_amount(self):
+        claim_amount = self.cleaned_data.get('claim_amount')
+        if claim_amount <= 0:
+            raise forms.ValidationError("Claim amount must be greater than zero.")
+        return claim_amount
+
+
+class ClaimDocumentForm(forms.ModelForm):
+    class Meta:
+        model = ClaimDocument
+        fields = ['document_type', 'file', 'description']
+        widgets = {
+            'document_type': forms.Select(attrs={'class': 'form-control'}),
+            'file': forms.FileInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})
+        }
+
+
+class ClaimRemarkForm(forms.Form):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('paid', 'Paid')
+    ]
+    
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    remarks = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        required=False
+    )        
+
+
+class ClaimPaymentForm(forms.Form):
+    PAYMENT_METHODS = [
+        ('bank_transfer', 'Bank Transfer'),
+        ('check', 'Check'),
+        ('digital_payment', 'Digital Payment'),
+        ('cash', 'Cash')
+    ]
+    
+    transaction_id = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+        required=True
+    )
+    
+    claim_amount = forms.DecimalField(
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+        required=True
+    )
+    
+    payment_method = forms.ChoiceField(
+        choices=PAYMENT_METHODS,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True
+    )
+    
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        required=False
+    )    

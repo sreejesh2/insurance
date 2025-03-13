@@ -64,8 +64,8 @@
                                         </a>
                                     </td>
                                     <td>{{ policy.category.name }}</td>
-                                    <td>${{ policy.coverage_amount|floatformat:2 }}</td>
-                                    <td>${{ policy.premium_amount|floatformat:2 }}</td>
+                                    <td>₹{{ policy.coverage_amount|floatformat:2 }}</td>
+                                    <td>₹{{ policy.premium_amount|floatformat:2 }}</td>
                                     <td>{{ policy.term_length }} months</td>
                                     <td>
                                         {% if policy.is_active %}

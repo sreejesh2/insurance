@@ -71,7 +71,7 @@
                         <div class="col col-stats ml-3 ml-sm-0">
                             <div class="numbers">
                                 <p class="card-category">Premium Revenue</p>
-                                <h4 class="card-title">${{ premium_revenue|floatformat:2|intcomma }}</h4>
+                                <h4 class="card-title">₹{{ premium_revenue|floatformat:2|intcomma }}</h4>
                             </div>
                         </div>
                     </div>
@@ -153,7 +153,7 @@
                                     <td>{{ claim.claim_number }}</td>
                                     <td>{{ claim.customer_policy.customer.user.get_full_name }}</td>
                                     <td>{{ claim.customer_policy.policy.category.name }}</td>
-                                    <td>${{ claim.claim_amount|floatformat:2|intcomma }}</td>
+                                    <td>₹{{ claim.claim_amount|floatformat:2|intcomma }}</td>
                                     <td>
                                         {% if claim.status == 'pending' %}
                                             <span class="badge badge-warning">Pending</span>
@@ -167,11 +167,7 @@
                                             <span class="badge badge-primary">Paid</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        <a href="{% url 'admin:insurance_claim_change' claim.id %}" class="btn btn-link btn-primary btn-lg">
-                                            <i class="fa fa-edit"></i>
-                                        </a>
-                                    </td>
+                
                                 </tr>
                                 {% empty %}
                                 <tr>

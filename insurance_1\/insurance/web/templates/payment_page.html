@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Premium Payment</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Policy Details</h5>
+                            <p><strong>Policy Number:</strong> {{ policy.policy_number }}</p>
+                            <p><strong>Policy Type:</strong> {{ policy.policy.name }}</p>
+                            <p><strong>Coverage Amount:</strong> ₹{{ policy.policy.coverage_amount }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Payment Details</h5>
+                            <p><strong>Premium Amount:</strong> ₹{{ premium.amount }}</p>
+                            <p><strong>Due Date:</strong> {{ premium.due_date }}</p>
+                            <p><strong>Payment Frequency:</strong> {{ policy.get_premium_payment_frequency_display }}</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        You are about to make a payment of <strong>₹{{ amount }}</strong> for your premium due on {{ premium.due_date }}.
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button id="razorpay-button" class="btn btn-lg btn-success">
+                            <i class="fas fa-credit-card me-2"></i>Pay Now ₹{{ amount }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    document.getElementById('razorpay-button').onclick = function(e) {
+        var options = {
+            "key": "{{ razorpay_key_id }}",
+            "amount": "{{ amount_in_paise }}",
+            "currency": "{{ currency }}",
+            "name": "Insurance System",
+            "description": "Premium Payment for Policy {{ policy.policy_number }}",
+            "order_id": "{{ razorpay_order_id }}",
+            "handler": function(response) {
+                // Create a form to submit the payment details to our server
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ callback_url }}";
+                
+                // Add CSRF token
+                var csrfField = document.createElement('input');
+                csrfField.type = 'hidden';
+                csrfField.name = 'csrfmiddlewaretoken';
+                csrfField.value = '{{ csrf_token }}';
+                form.appendChild(csrfField);
+                
+                // Add payment details
+                var fields = {
+                    'razorpay_payment_id': response.razorpay_payment_id,
+                    'razorpay_order_id': response.razorpay_order_id,
+                    'razorpay_signature': response.razorpay_signature
+                };
+                
+                for (var fieldName in fields) {
+                    var hiddenField = document.createElement('input');
+                    hiddenField.type = 'hidden';
+                    hiddenField.name = fieldName;
+                    hiddenField.value = fields[fieldName];
+                    form.appendChild(hiddenField);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            },
+            "prefill": {
+                "name": "{{ name }}",
+                "email": "{{ email }}",
+                "contact": "{{ phone }}"
+            },
+            "theme": {
+                "color": "#3399cc"
+            }
+        };
+        var rzp = new Razorpay(options);
+        rzp.open();
+        e.preventDefault();
+    }
+</script>
+{% endblock %}

@@ -39,7 +39,7 @@
                     {% if object.is_superuser %}
                         <a href="{% url 'dashboard' %}" class="btn btn-danger w-100 mb-2">Go to Admin Panel</a>
                     {% elif object.is_staff %}
-                        <a href="" class="btn btn-info w-100 mb-2">Go to Agent Panel</a>
+                        <a href="{% url 'agent_policies'%}" class="btn btn-info w-100 mb-2">Go to Agent Panel</a>
                     {% endif %}
                 </div>
             </div>
@@ -96,7 +96,7 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="text-muted">Annual Income</label>
-                                <p class="mb-0">{% if customer.annual_income %}${{ customer.annual_income }}{% else %}Not provided{% endif %}</p>
+                                <p class="mb-0">{% if customer.annual_income %}₹{{ customer.annual_income }}{% else %}Not provided{% endif %}</p>
                             </div>
                         </div>
                     </div>
@@ -159,7 +159,7 @@
                                                 </span>
                                             </td>
                                             <td>{{ policy.start_date }}</td>
-                                            <td>${{ policy.premium_amount }}</td>
+                                            <td>₹{{ policy.premium_amount }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -194,7 +194,7 @@
                                         <tr>
                                             <td>{{ claim.claim_number }}</td>
                                             <td>{{ claim.filing_date }}</td>
-                                            <td>${{ claim.claim_amount }}</td>
+                                            <td>₹{{ claim.claim_amount }}</td>
                                             <td>
                                                 <span class="badge {% if claim.status == 'approved' %}bg-success{% elif claim.status == 'pending' %}bg-warning{% elif claim.status == 'rejected' %}bg-danger{% else %}bg-info{% endif %}">
                                                     {{ claim.get_status_display }}

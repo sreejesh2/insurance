@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">My Insurance Claims</h4>
+                    <a href="{% url 'my_policies' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Policies
+                    </a>
+                </div>
+                
+                <div class="card-body">
+                    {% if claims %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Claim Number</th>
+                                        <th>Policy Number</th>
+                                        <th>Filing Date</th>
+                                        <th>Incident Date</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for claim in claims %}
+                                    <tr>
+                                        <td>{{ claim.claim_number }}</td>
+                                        <td>{{ claim.customer_policy.policy_number }}</td>
+                                        <td>{{ claim.filing_date }}</td>
+                                        <td>{{ claim.incident_date }}</td>
+                                        <td>₹{{ claim.claim_amount }}</td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if claim.status == 'approved' or claim.status == 'paid' %}bg-success
+                                                {% elif claim.status == 'rejected' %}bg-danger
+                                                {% elif claim.status == 'under_review' %}bg-info
+                                                {% else %}bg-warning{% endif %}">
+                                                {{ claim.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" 
+                                                        type="button" data-bs-toggle="dropdown" 
+                                                        aria-expanded="false">
+                                                    Actions
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'claim_details' claim.id %}">
+                                                            <i class="fas fa-eye me-2"></i>View Details
+                                                        </a>
+                                                    </li>
+                                                    {% if claim.status == 'pending' or claim.status == 'under_review' %}
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'upload_claim_document' claim.id %}">
+                                                            <i class="fas fa-upload me-2"></i>Upload Documents
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if is_paginated %}
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                        
+                    {% else %}
+                        <div class="text-center py-5">
+                            <img src="{% static 'img/no-claims.svg' %}" alt="No Claims" class="mb-3" style="max-width: 200px;">
+                            <h5>No Claims Found</h5>
+                            <p class="text-muted">You haven't filed any insurance claims yet.</p>
+                            <a href="{% url 'my_policies' %}" class="btn btn-primary">
+                                View My Policies
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if claims %}
+            <!-- Claims Statistics -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Total Claims</h6>
+                            <h3 class="mb-0">{{ claims|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Approved/Paid</h6>
+                            <h3 class="mb-0">{{ approved_claims_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Pending</h6>
+                            <h3 class="mb-0">{{ pending_claims_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Under Review</h6>
+                            <h3 class="mb-0">{{ under_review_claims_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

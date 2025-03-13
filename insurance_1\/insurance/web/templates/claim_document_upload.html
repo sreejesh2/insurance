@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Upload Supporting Documents</h4>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">Claim Information</h5>
+                                    <p><strong>Claim Number:</strong> {{ claim.claim_number }}</p>
+                                    <p><strong>Policy Number:</strong> {{ claim.customer_policy.policy_number }}</p>
+                                    <p><strong>Filing Date:</strong> {{ claim.filing_date }}</p>
+                                    <p><strong>Status:</strong> 
+                                        <span class="badge 
+                                        {% if claim.status == 'approved' or claim.status == 'paid' %}bg-success
+                                        {% elif claim.status == 'rejected' %}bg-danger
+                                        {% else %}bg-warning{% endif %}">
+                                            {{ claim.get_status_display }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">Document Guidelines</h5>
+                                    <ul class="mb-0">
+                                        <li>Upload clear and legible copies of your documents</li>
+                                        <li>Supported formats: PDF, JPG, PNG (max 5MB per file)</li>
+                                        <li>Ensure all details are visible and not cropped</li>
+                                        <li>Include a brief description of each document</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Existing Documents -->
+                    {% if existing_documents %}
+                    <h5 class="mb-3">Uploaded Documents</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Document Type</th>
+                                    <th>Description</th>
+                                    <th>Uploaded On</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in existing_documents %}
+                                <tr>
+                                    <td>{{ doc.get_document_type_display }}</td>
+                                    <td>{{ doc.description|default:"No description provided" }}</td>
+                                    <td>{{ doc.uploaded_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{{ doc.file.url }}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="fas fa-eye me-1"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Upload New Document Form -->
+                    <h5 class="mb-3">Upload New Document</h5>
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.document_type.id_for_label }}" class="form-label">
+                                Document Type <span class="text-danger">*</span>
+                            </label>
+                            {{ form.document_type }}
+                            {% if form.document_type.errors %}
+                            <div class="text-danger">
+                                {% for error in form.document_type.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">
+                                Document File <span class="text-danger">*</span>
+                            </label>
+                            {{ form.file }}
+                            {% if form.file.errors %}
+                            <div class="text-danger">
+                                {% for error in form.file.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                Description
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger">
+                                {% for error in form.description.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">Briefly describe what this document contains or proves</small>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'claim_details' claim.id %}" class="btn btn-secondary me-md-2">
+                                Back to Claim
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-2"></i>Upload Document
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

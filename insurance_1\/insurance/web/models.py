@@ -182,7 +182,6 @@ class Beneficiary(models.Model):
     def __str__(self):
         return f"{self.name} - {self.customer_policy.policy_number}"
     
-
 class PaymentTransaction(models.Model):
     PAYMENT_METHOD_CHOICES = [
         ('credit_card', 'Credit Card'),

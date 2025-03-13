@@ -56,12 +56,12 @@
                                                     </li>
                                                     {% if policy.status == 'active' %}
                                                     <li>
-                                                        <a class="dropdown-item" href="">
+                                                        <a class="dropdown-item" href="{% url 'file_claim' policy.id %}">
                                                             <i class="fas fa-file-medical me-2"></i>File Claim
                                                         </a>
-                                                    </li>
+                                                    </li>>
                                                     <li>
-                                                        <a class="dropdown-item" href="">
+                                                        <a class="dropdown-item" href="{% url 'premium_payment' policy.id %}">
                                                             <i class="fas fa-credit-card me-2"></i>Make Payment
                                                         </a>
                                                     </li>

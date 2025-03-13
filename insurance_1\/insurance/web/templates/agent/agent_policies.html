@@ -1,0 +1,139 @@
+{% extends "agent/agent_base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>My Assigned Policies</h2>
+    
+    <!-- Summary cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Total Policies</h5>
+                    <h2 class="card-text">{{ total_policies }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">Active Policies</h5>
+                    <h2 class="card-text">{{ active_policies }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Policies</h5>
+                    <h2 class="card-text">{{ pending_policies }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Policies table -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Policies List</h4>
+        </div>
+        <div class="card-body">
+            {% if policies %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Policy Number</th>
+                            <th>Customer</th>
+                            <th>Policy Type</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Premium</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for policy in policies %}
+                        <tr>
+                            <td>{{ policy.policy_number }}</td>
+                            <td>{{ policy.customer.user.get_full_name }}</td>
+                            <td>{{ policy.policy.name }}</td>
+                            <td>{{ policy.start_date }}</td>
+                            <td>{{ policy.end_date }}</td>
+                            <td>₹{{ policy.premium_amount }} ({{ policy.premium_payment_frequency }})</td>
+                            <td>
+                                <span class="badge {% if policy.status == 'active' %}bg-success{% elif policy.status == 'pending' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                    {{ policy.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'agent_policy_detail' policy.id %}" class="btn btn-sm btn-info">View Details</a>
+                                
+                                {% if policy.status == 'pending' %}
+                                <form method="post" action="{% url 'policy_status_update' policy.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="approve">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                <form method="post" action="{% url 'policy_status_update' policy.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="reject">
+                                    <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                          
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">&laquo; First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            
+            {% else %}
+            <div class="alert alert-info">
+                No policies have been assigned to you yet.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

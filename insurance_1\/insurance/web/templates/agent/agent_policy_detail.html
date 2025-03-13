@@ -1,0 +1,312 @@
+{% extends 'agent/agent_base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Policy Details</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'agent_policies' %}">My Assigned Policies</a></li>
+                    <li class="breadcrumb-item active">{{ policy.policy_number }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Policy Status Actions -->
+    {% if policy.status == 'pending' %}
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-white">
+            <h5 class="mb-0">Policy Approval</h5>
+        </div>
+        <div class="card-body">
+            <p>This policy is pending your approval. Please review the details and documents before making a decision.</p>
+            <form method="post" action="{% url 'policy_status_update' policy.id %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve">
+                <button type="submit" class="btn btn-success">Approve Policy</button>
+            </form>
+            <form method="post" action="{% url 'policy_status_update' policy.id %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject">
+                <button type="submit" class="btn btn-danger">Reject Policy</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Policy Information -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Policy Information</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Policy Number:</th>
+                            <td>{{ policy.policy_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Policy Type:</th>
+                            <td>{{ policy.policy.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                <span class="badge {% if policy.status == 'active' %}bg-success{% elif policy.status == 'pending' %}bg-warning{% elif policy.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {{ policy.status|title }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Start Date:</th>
+                            <td>{{ policy.start_date }}</td>
+                        </tr>
+                        <tr>
+                            <th>End Date:</th>
+                            <td>{{ policy.end_date }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Premium Amount:</th>
+                            <td>₹{{ policy.premium_amount }}</td>
+                        </tr>
+                        <tr>
+                            <th>Payment Frequency:</th>
+                            <td>{{ policy.get_premium_payment_frequency_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Next Premium Date:</th>
+                            <td>{{ policy.next_premium_date }}</td>
+                        </tr>
+                        <tr>
+                            <th>Coverage Amount:</th>
+                            <td>₹{{ policy.policy.coverage_amount }}</td>
+                        </tr>
+                        <tr>
+                            <th>Created On:</th>
+                            <td>{{ policy.created_at }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Information -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Customer Information</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Name:</th>
+                            <td>{{ policy.customer.user.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ policy.customer.user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Phone:</th>
+                            <td>{{ policy.customer.phone_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Address:</th>
+                            <td>{{ policy.customer.address }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documents -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Policy Documents</h4>
+        </div>
+        <div class="card-body">
+            {% if documents %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Document Type</th>
+                            <th>Title</th>
+                            <th>Uploaded</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for document in documents %}
+                        <tr>
+                            <td>{{ document.get_document_type_display }}</td>
+                            <td>{{ document.title }}</td>
+                            <td>{{ document.uploaded_at }}</td>
+                            <td>
+                                {% if document.verified %}
+                                <span class="badge bg-success">Verified</span>
+                                {% else %}
+                                <span class="badge bg-warning">Pending Verification</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ document.file.url }}" class="btn btn-sm btn-info" target="_blank">View</a>
+                                
+                                {% if not document.verified %}
+                                <form method="post" action="{% url 'document_verify' document.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">Verify</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                No documents have been uploaded for this policy.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Beneficiaries -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Beneficiaries</h4>
+        </div>
+        <div class="card-body">
+            {% if beneficiaries %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Relationship</th>
+                            <th>Contact</th>
+                            <th>Share (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for beneficiary in beneficiaries %}
+                        <tr>
+                            <td>{{ beneficiary.name }}</td>
+                            <td>{{ beneficiary.relationship }}</td>
+                            <td>{{ beneficiary.phone_number }}</td>
+                            <td>{{ beneficiary.percentage_share }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                No beneficiaries have been added for this policy.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Premium Payments -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Premium Payments</h4>
+        </div>
+        <div class="card-body">
+            {% if premiums %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Due Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Payment Date</th>
+                            <th>Method</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for premium in premiums %}
+                        <tr>
+                            <td>{{ premium.due_date }}</td>
+                            <td>₹{{ premium.amount }}</td>
+                            <td>
+                                <span class="badge {% if premium.payment_status == 'paid' %}bg-success{% elif premium.payment_status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ premium.payment_status|title }}
+                                </span>
+                            </td>
+                            <td>{{ premium.payment_date|default:"--" }}</td>
+                            <td>{{ premium.payment_method|default:"--" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                No premium records found for this policy.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Claims -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Claims</h4>
+        </div>
+        <div class="card-body">
+            {% if claims %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Claim Number</th>
+                            <th>Incident Date</th>
+                            <th>Claim Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for claim in claims %}
+                        <tr>
+                            <td>{{ claim.claim_number }}</td>
+                            <td>{{ claim.incident_date }}</td>
+                            <td>₹{{ claim.claim_amount }}</td>
+                            <td>
+                                <span class="badge {% if claim.status == 'approved' or claim.status == 'paid' %}bg-success{% elif claim.status == 'pending' or claim.status == 'under_review' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ claim.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-info">View Details</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                No claims have been filed for this policy.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

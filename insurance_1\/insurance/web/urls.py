@@ -35,4 +35,33 @@ path('policy/<int:policy_id>/download/', DownloadPolicyView.as_view(), name='dow
     path('policies/<int:pk>/update/',InsurancePolicyUpdateView.as_view(), name='policy_edit'),
     path('policies/<int:pk>/delete/', InsurancePolicyDeleteView.as_view(), name='policy_delete'),
     path('policies/<int:pk>/toggle-status/', toggle_policy_status, name='policy_toggle_status'),
+
+
+
+
+    path('agent/policies/', AgentPolicyListView.as_view(), name='agent_policies'),
+
+    path('agent/policy/<int:pk>/', AgentPolicyDetailView.as_view(), name='agent_policy_detail'),
+    path('agent/policy/<int:pk>/update-status/', PolicyStatusUpdateView.as_view(), name='policy_status_update'),
+    path('agent/document/<int:pk>/verify/', DocumentVerificationView.as_view(), name='document_verify'),
+
+
+    path('policy/<int:policy_id>/payment/', PremiumPaymentView.as_view(), name='premium_payment'),
+    path('payment/callback/', PaymentCallbackView.as_view(), name='payment_callback'),
+    path('policy/<int:policy_id>/file-claim/', ClaimCreateView.as_view(), name='file_claim'),
+
+ 
+    path('claim/<int:pk>/', ClaimDetailView.as_view(), name='claim_details'),
+    path('claim/<int:claim_id>/upload-document/', ClaimDocumentCreateView.as_view(), name='upload_claim_document'),
+    path('my-claims/', MyClaimsListView.as_view(), name='my_claims'), 
+
+
+    path('agent/claims/', AgentClaimListView.as_view(), name='agent_claims'),
+    path('agent/claim/<int:pk>/', AgentClaimDetailView.as_view(), name='agent_claim_detail'),
+    path('agent/claim/<int:pk>/update-status/', ClaimStatusUpdateView.as_view(), name='claim_status_update'),
+    path('agent/claim-document/<int:pk>/verify/', ClaimDocumentVerifyView.as_view(), name='claim_document_verify'),
+      # ... your other URLs
+    path('claims/approved/', AdminApprovedClaimsView.as_view(), name='admin_approved_claims'),
+    path('claim/<int:pk>/process-payment/', ProcessClaimPaymentView.as_view(), name='process_claim_payment'),
+
 ]

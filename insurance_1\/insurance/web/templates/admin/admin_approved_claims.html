@@ -1,0 +1,139 @@
+{% extends 'admin/admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Approved Claims Pending Payment</h4>
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+                    </a>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Status Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Claims to Process</h6>
+                                    <h2 class="mb-0">{{ claims_count }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Total Amount</h6>
+                                    <h2 class="mb-0">₹{{ total_approved_amount }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Average Payout</h6>
+                                    <h2 class="mb-0">
+                                        {% if claims_count > 0 %}
+                                        ₹{{ total_approved_amount|divisibleby:claims_count }}
+                                        {% else %}
+                                        ₹0
+                                        {% endif %}
+                                    </h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Claims Table -->
+                    {% if claims %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Claim Number</th>
+                                        <th>Customer</th>
+                                        <th>Policy Number</th>
+                                        <th>Approval Date</th>
+                                        <th>Claim Amount</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for claim in claims %}
+                                    <tr>
+                                        <td>{{ claim.claim_number }}</td>
+                                        <td>{{ claim.customer_policy.customer.user.get_full_name }}</td>
+                                        <td>{{ claim.customer_policy.policy_number }}</td>
+                                        <td>{{ claim.processed_date }}</td>
+                                        <td>₹{{ claim.claim_amount }}</td>
+                                        <td>
+                                            <span class="badge bg-success">
+                                                {{ claim.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'process_claim_payment' claim.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-money-bill-wave me-1"></i> Process Payment
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if is_paginated %}
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                        
+                    {% else %}
+                        <div class="text-center py-5">
+                            <img src="{% static 'img/no-claims.svg' %}" alt="No Claims" class="mb-3" style="max-width: 200px;">
+                            <h5>No Approved Claims Pending Payment</h5>
+                            <p class="text-muted">There are no approved claims that need payment processing at this time.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

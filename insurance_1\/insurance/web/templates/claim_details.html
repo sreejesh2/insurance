@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Claim Details</h4>
+                        <span class="badge 
+                            {% if claim.status == 'approved' or claim.status == 'paid' %}bg-success
+                            {% elif claim.status == 'rejected' %}bg-danger
+                            {% else %}bg-warning{% endif %} fs-6">
+                            {{ claim.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Claim Information</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">Claim Number:</th>
+                                    <td>{{ claim.claim_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Filing Date:</th>
+                                    <td>{{ claim.filing_date }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Incident Date:</th>
+                                    <td>{{ claim.incident_date }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Claim Amount:</th>
+                                    <td>₹{{ claim.claim_amount }}</td>
+                                </tr>
+                                {% if claim.processed_date %}
+                                <tr>
+                                    <th>Processed Date:</th>
+                                    <td>{{ claim.processed_date }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Policy Information</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="40%">Policy Number:</th>
+                                    <td>{{ claim.customer_policy.policy_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Policy Type:</th>
+                                    <td>{{ claim.customer_policy.policy.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Coverage:</th>
+                                    <td>₹{{ claim.customer_policy.policy.coverage_amount }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Policy Status:</th>
+                                    <td>
+                                        <span class="badge {% if claim.customer_policy.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ claim.customer_policy.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Incident Description</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>{{ claim.description|linebreaks }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if claim.remarks %}
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Agent Remarks</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>{{ claim.remarks|linebreaks }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Supporting Documents -->
+                    <h5 class="mb-3">Supporting Documents</h5>
+                    {% if documents %}
+                    <div class="table-responsive mb-4">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Document Type</th>
+                                    <th>Description</th>
+                                    <th>Uploaded On</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                <tr>
+                                    <td>{{ doc.get_document_type_display }}</td>
+                                    <td>{{ doc.description|default:"No description provided" }}</td>
+                                    <td>{{ doc.uploaded_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{{ doc.file.url }}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="fas fa-eye me-1"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No supporting documents have been uploaded for this claim.
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Claim Timeline -->
+                    <h5 class="mb-3">Claim Status Timeline</h5>
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <ul class="timeline">
+                                <li class="timeline-item">
+                                    <div class="timeline-marker bg-success"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Claim Submitted</h6>
+                                        <p class="timeline-date">{{ claim.filing_date }}</p>
+                                    </div>
+                                </li>
+                                
+                                {% if claim.status == 'under_review' or claim.status == 'approved' or claim.status == 'rejected' or claim.status == 'paid' %}
+                                <li class="timeline-item">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Under Review</h6>
+                                        <p class="timeline-date">
+                                            {% if claim.updated_at %}
+                                            {{ claim.updated_at|date:"M d, Y" }}
+                                            {% else %}
+                                            --
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </li>
+                                {% endif %}
+                                
+                                {% if claim.status == 'approved' or claim.status == 'rejected' or claim.status == 'paid' %}
+                                <li class="timeline-item">
+                                    <div class="timeline-marker {% if claim.status == 'rejected' %}bg-danger{% else %}bg-success{% endif %}"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">
+                                            {% if claim.status == 'rejected' %}
+                                            Claim Rejected
+                                            {% else %}
+                                            Claim Approved
+                                            {% endif %}
+                                        </h6>
+                                        <p class="timeline-date">
+                                            {% if claim.processed_date %}
+                                            {{ claim.processed_date }}
+                                            {% else %}
+                                            --
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </li>
+                                {% endif %}
+                                
+                                {% if claim.status == 'paid' %}
+                                <li class="timeline-item">
+                                    <div class="timeline-marker bg-success"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Payment Processed</h6>
+                                        <p class="timeline-date">
+                                            {% if claim.updated_at %}
+                                            {{ claim.updated_at|date:"M d, Y" }}
+                                            {% else %}
+                                            --
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'my_claims' %}" class="btn btn-secondary me-md-2">
+                            Back to My Claims
+                        </a>
+                        
+                        {% if claim.status == 'pending' or claim.status == 'under_review' %}
+                        <a href="{% url 'upload_claim_document' claim.id %}" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload Documents
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Timeline styling */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+    list-style: none;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1.5rem;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    left: -22px;
+    top: 6px;
+}
+
+.timeline-item:not(:last-child):before {
+    content: '';
+    position: absolute;
+    left: -15px;
+    top: 24px;
+    height: calc(100% - 24px);
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-date {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}

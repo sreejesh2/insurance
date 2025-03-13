@@ -14,7 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.contrib import messages
-from .models import InsurancePolicy, CustomerPolicy,Premium,Document
+from .models import InsurancePolicy, CustomerPolicy,Premium,Document,PaymentTransaction,ClaimDocument
 from datetime import datetime, timedelta
 from django.utils import timezone
 import random
@@ -38,7 +38,7 @@ from django.db.models import Q
 from decimal import Decimal
 from django.db.models import Count, Sum, Q
 from django import forms
-from .form import StaffUserForm,is_superuser,InsuranceCategoryForm,InsurancePolicyForm
+from .form import StaffUserForm,is_superuser,InsuranceCategoryForm,InsurancePolicyForm,ClaimForm,ClaimDocumentForm,ClaimRemarkForm,ClaimPaymentForm
 # Create your views here.
 def home(request):
     return render(request,'index.html')
@@ -217,6 +217,13 @@ class CustomerPolicyCreateView(LoginRequiredMixin, CreateView):
         form.instance.premium_amount = policy.premium_amount
         form.instance.next_premium_date = timezone.now().date() + timedelta(days=30)
         
+        # Get a random agent who is staff but not superuser
+        agents = User.objects.filter(is_staff=True, is_superuser=False)
+        if agents.exists():
+            # Use order_by('?') to get a random record
+            random_agent = agents.order_by('?').first()
+            form.instance.agent = random_agent
+        
         try:
             response = super().form_valid(form)
             messages.success(self.request, 'Policy application submitted successfully!')
@@ -375,9 +382,9 @@ class DownloadPolicyView(LoginRequiredMixin, View):
             ['Status', policy.get_status_display()],
             ['Start Date', policy.start_date.strftime('%B %d, %Y')],
             ['End Date', policy.end_date.strftime('%B %d, %Y')],
-            ['Premium Amount', f"${policy.premium_amount}"],
+            ['Premium Amount', f"₹{policy.premium_amount}"],
             ['Payment Frequency', policy.get_premium_payment_frequency_display()],
-            ['Coverage Amount', f"${policy.policy.coverage_amount}"],
+            ['Coverage Amount', f"₹{policy.policy.coverage_amount}"],
         ]
         
         policy_table = Table(policy_data, colWidths=[2*inch, 4*inch])
@@ -548,7 +555,7 @@ def admin_dashboard(request):
         recent_activities.append({
             'type': 'info',
             'date': premium.updated_at.date(),
-            'text': f"Premium payment of ${premium.amount} received for policy {premium.customer_policy.policy_number}",
+            'text': f"Premium payment of ₹{premium.amount} received for policy {premium.customer_policy.policy_number}",
         })
     
     # Sort activities by date (newest first)
@@ -819,3 +826,591 @@ def toggle_policy_status(request, pk):
     
     # Redirect back to the referring page
     return redirect(request.META.get('HTTP_REFERER', 'policy_list'))
+
+
+
+
+
+class AgentPolicyListView(LoginRequiredMixin, ListView):
+    model = CustomerPolicy
+    template_name = 'agent/agent_policies.html'
+    context_object_name = 'policies'
+    paginate_by = 10  # Optional: Add pagination
+    
+    def test_func(self):
+        # Only allow staff users who are not superusers to access this view
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def get_queryset(self):
+        # Return only policies assigned to the current agent
+        return CustomerPolicy.objects.filter(
+            agent=self.request.user
+        ).select_related('customer', 'policy').order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['total_policies'] = self.get_queryset().count()
+        # Add other useful stats
+        context['active_policies'] = self.get_queryset().filter(status='active').count()
+        context['pending_policies'] = self.get_queryset().filter(status='pending').count()
+        return context
+    
+class AgentPolicyDetailView(LoginRequiredMixin, DetailView):
+    model = CustomerPolicy
+    template_name = 'agent/agent_policy_detail.html'
+    context_object_name = 'policy'
+    
+    def test_func(self):
+        # Only staff users who are agents can access
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        policy = self.get_object()
+        
+        # Get all documents related to this policy
+        context['documents'] = Document.objects.filter(policy=policy)
+        
+     
+        
+        # Get premium payments
+        context['premiums'] = Premium.objects.filter(customer_policy=policy).order_by('-due_date')
+        
+        # Get claims
+        context['claims'] = Claim.objects.filter(customer_policy=policy)
+        
+        return context    
+    
+
+class PolicyStatusUpdateView(LoginRequiredMixin,  View):
+    def test_func(self):
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def post(self, request, *args, **kwargs):
+        policy_id = kwargs.get('pk')
+        action = request.POST.get('action')
+        
+        policy = get_object_or_404(CustomerPolicy, pk=policy_id)
+        
+        # Check if the policy is assigned to this agent
+        if policy.agent != request.user:
+            messages.error(request, "You are not authorized to update this policy.")
+            return redirect('agent_policy_detail', pk=policy_id)
+        
+        if action == 'approve':
+            policy.status = 'active'
+            
+            # Create notification for customer
+            Notification.create_policy_activated_notification(
+                customer=policy.customer,
+                policy=policy
+            )
+            
+            messages.success(request, f"Policy {policy.policy_number} has been approved.")
+        
+        elif action == 'reject':
+            policy.status = 'cancelled'
+            
+            # Create notification for customer
+            Notification.objects.create(
+                customer=policy.customer,
+                notification_type='policy_status',
+                title='Policy Application Rejected',
+                message=f'Your policy application {policy.policy_number} has been rejected.',
+                related_policy=policy
+            )
+            
+            messages.success(request, f"Policy {policy.policy_number} has been rejected.")
+        
+        policy.save()
+        return redirect('agent_policy_detail', pk=policy_id)    
+    
+
+
+class DocumentVerificationView(LoginRequiredMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def post(self, request, *args, **kwargs):
+        document_id = kwargs.get('pk')
+        document = get_object_or_404(Document, pk=document_id)
+        
+        # Check if the document's policy is assigned to this agent
+        if document.policy and document.policy.agent != request.user:
+            messages.error(request, "You are not authorized to verify this document.")
+            return redirect('agent_policy_detail', pk=document.policy.id)
+        
+        document.verified = True
+        document.verified_by = request.user
+        document.verified_at = timezone.now()
+        document.save()
+        
+        # Create notification for customer
+        Notification.create_document_verified_notification(
+            customer=document.customer,
+            policy=document.policy
+        )
+        
+        messages.success(request, f"Document '{document.title}' has been verified.")
+        return redirect('agent_policy_detail', pk=document.policy.id)    
+    
+
+
+import razorpay
+from django.conf import settings
+from django.views.generic import View
+from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+
+class PremiumPaymentView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        policy_id = kwargs.get('policy_id')
+        policy = get_object_or_404(CustomerPolicy, pk=policy_id, customer=request.user.customer)
+        
+        # Get upcoming or pending premium
+        premium = Premium.objects.filter(
+            customer_policy=policy, 
+            payment_status='pending'
+        ).order_by('due_date').first()
+        
+        if not premium:
+            # Create a new premium record if none is pending
+            premium = Premium.objects.create(
+                customer_policy=policy,
+                amount=policy.premium_amount,
+                due_date=policy.next_premium_date,
+                payment_status='pending'
+            )
+        
+        # Initialize Razorpay client
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        
+        # Convert amount to paise (Razorpay requires amount in smallest currency unit)
+        amount_in_paise = int(float(premium.amount) * 100)
+        
+        # Create Razorpay order
+        order_data = {
+            'amount': amount_in_paise,
+            'currency': 'INR',
+            'receipt': f'premium_{premium.id}',
+            'notes': {
+                'policy_number': policy.policy_number,
+                'premium_id': premium.id
+            }
+        }
+        
+        # Create the Razorpay Order
+        order = client.order.create(data=order_data)
+        
+        # Store order details in the session for verification
+        request.session['razorpay_order_id'] = order['id']
+        request.session['premium_id'] = premium.id
+        
+        context = {
+            'policy': policy,
+            'premium': premium,
+            'razorpay_key_id': settings.RAZORPAY_KEY_ID,
+            'razorpay_order_id': order['id'],
+            'callback_url': request.build_absolute_uri(reverse('payment_callback')),
+            'amount': premium.amount,
+            'amount_in_paise': amount_in_paise,
+            'currency': 'INR',
+            'email': request.user.email,
+            'phone': policy.customer.phone_number,
+            'name': request.user.get_full_name()
+        }
+        
+        return render(request, 'payment_page.html', context)
+
+class PaymentCallbackView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        # Get payment details from POST request
+        payment_id = request.POST.get('razorpay_payment_id', '')
+        order_id = request.POST.get('razorpay_order_id', '')
+        signature = request.POST.get('razorpay_signature', '')
+        
+        # Verify payment signature
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        
+        # Get order_id and premium_id from session
+        stored_order_id = request.session.get('razorpay_order_id')
+        premium_id = request.session.get('premium_id')
+        
+        # Clear session data
+        if 'razorpay_order_id' in request.session:
+            del request.session['razorpay_order_id']
+        if 'premium_id' in request.session:
+            del request.session['premium_id']
+        
+        # Verify signature
+        if not order_id or order_id != stored_order_id:
+            messages.error(request, "Payment verification failed. Invalid order.")
+            return redirect('my_policies')
+        
+        try:
+            # Verify the payment signature
+            params_dict = {
+                'razorpay_payment_id': payment_id,
+                'razorpay_order_id': order_id,
+                'razorpay_signature': signature
+            }
+            client.utility.verify_payment_signature(params_dict)
+            
+            # Payment successful, update premium status
+            premium = get_object_or_404(Premium, id=premium_id)
+            premium.payment_status = 'paid'
+            premium.payment_date = timezone.now()
+            premium.payment_method = 'razorpay'
+            premium.transaction_id = payment_id
+            premium.save()
+            
+            # Update policy next premium date
+            policy = premium.customer_policy
+            
+            # Calculate next premium date based on payment frequency
+            if policy.premium_payment_frequency == 'monthly':
+                policy.next_premium_date = timezone.now().date() + timedelta(days=30)
+            elif policy.premium_payment_frequency == 'quarterly':
+                policy.next_premium_date = timezone.now().date() + timedelta(days=90)
+            elif policy.premium_payment_frequency == 'semi-annual':
+                policy.next_premium_date = timezone.now().date() + timedelta(days=182)
+            elif policy.premium_payment_frequency == 'annual':
+                policy.next_premium_date = timezone.now().date() + timedelta(days=365)
+            
+            policy.save()
+            
+            # Create payment transaction record
+            PaymentTransaction.objects.create(
+                premium=premium,
+                transaction_id=payment_id,
+                amount=premium.amount,
+                payment_method='credit_card',  # Default value, can be adjusted based on Razorpay response
+                status='completed',
+                gateway_response={'order_id': order_id, 'payment_id': payment_id}
+            )
+            
+            # Create notification for successful payment
+            Notification.objects.create(
+                customer=policy.customer,
+                notification_type='payment_received',
+                title='Premium Payment Successful',
+                message=f'Your premium payment of ₹{premium.amount} for policy {policy.policy_number} has been received.',
+                related_policy=policy
+            )
+            
+            messages.success(request, "Premium payment successful!")
+            return redirect('policy_details', pk=policy.id)
+            
+        except razorpay.errors.SignatureVerificationError:
+            messages.error(request, "Payment verification failed. Invalid signature.")
+            return redirect('my_policies')
+        except Exception as e:
+            messages.error(request, f"Payment failed: {str(e)}")
+            return redirect('my_policies')    
+        
+
+# In your views.py
+class ClaimCreateView(LoginRequiredMixin, CreateView):
+    model = Claim
+    form_class = ClaimForm  # You'll need to create this form
+    template_name = 'file_claim.html'  # Create this template
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        policy_id = self.kwargs.get('policy_id')
+        context['policy'] = get_object_or_404(CustomerPolicy, id=policy_id, customer=self.request.user.customer)
+        return context
+    
+    def form_valid(self, form):
+        policy_id = self.kwargs.get('policy_id')
+        policy = get_object_or_404(CustomerPolicy, id=policy_id, customer=self.request.user.customer)
+        
+        # Generate a unique claim number
+        while True:
+            claim_number = f"CLM{timezone.now().strftime('%Y%m')}{random.randint(1000, 9999)}"
+            if not Claim.objects.filter(claim_number=claim_number).exists():
+                break
+        
+        form.instance.customer_policy = policy
+        form.instance.claim_number = claim_number
+        form.instance.status = 'pending'
+        
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('policy_details', kwargs={'pk': self.kwargs.get('policy_id')})        
+    
+
+class ClaimDocumentCreateView(LoginRequiredMixin, CreateView):
+    model = ClaimDocument
+    form_class = ClaimDocumentForm
+    template_name = 'claim_document_upload.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        claim_id = self.kwargs.get('claim_id')
+        context['claim'] = get_object_or_404(
+            Claim, 
+            id=claim_id, 
+            customer_policy__customer=self.request.user.customer
+        )
+        context['existing_documents'] = ClaimDocument.objects.filter(claim_id=claim_id)
+        return context
+    
+    def form_valid(self, form):
+        claim_id = self.kwargs.get('claim_id')
+        claim = get_object_or_404(
+            Claim, 
+            id=claim_id, 
+            customer_policy__customer=self.request.user.customer
+        )
+        
+        form.instance.claim = claim
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('claim_details', kwargs={'pk': self.kwargs.get('claim_id')})
+
+
+
+
+class ClaimDetailView(LoginRequiredMixin, DetailView):
+    model = Claim
+    template_name = 'claim_details.html'
+    context_object_name = 'claim'
+    
+    def get_queryset(self):
+        return Claim.objects.filter(customer_policy__customer=self.request.user.customer)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        claim = self.get_object()
+        context['documents'] = ClaimDocument.objects.filter(claim=claim)
+        return context
+    
+class MyClaimsListView(LoginRequiredMixin, ListView):
+    model = Claim
+    template_name = 'my_claims.html'
+    context_object_name = 'claims'
+    paginate_by = 10  # Optional: Add pagination
+    
+    def get_queryset(self):
+        return Claim.objects.filter(
+            customer_policy__customer=self.request.user.customer
+        ).order_by('-filing_date')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Count claims by status
+        queryset = self.get_queryset()
+        context['approved_claims_count'] = queryset.filter(
+            status__in=['approved', 'paid']
+        ).count()
+        context['pending_claims_count'] = queryset.filter(
+            status='pending'
+        ).count()
+        context['under_review_claims_count'] = queryset.filter(
+            status='under_review'
+        ).count()
+        
+        return context
+    
+class AgentClaimListView(LoginRequiredMixin, ListView):
+    model = Claim
+    template_name = 'agent/agent_claims.html'
+    context_object_name = 'claims'
+    paginate_by = 10
+    
+    def test_func(self):
+        # Only staff users who are not superusers can access
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def get_queryset(self):
+        # Return claims for policies assigned to this agent
+        return Claim.objects.filter(
+            customer_policy__agent=self.request.user
+        ).select_related('customer_policy', 'customer_policy__customer', 'customer_policy__policy').order_by('-filing_date')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        queryset = self.get_queryset()
+        
+        # Count claims by status
+        context['pending_claims'] = queryset.filter(status='pending').count()
+        context['under_review_claims'] = queryset.filter(status='under_review').count()
+        context['approved_claims'] = queryset.filter(status='approved').count()
+        context['rejected_claims'] = queryset.filter(status='rejected').count()
+        context['paid_claims'] = queryset.filter(status='paid').count()
+        
+        return context
+
+
+class AgentClaimDetailView(LoginRequiredMixin,  DetailView):
+    model = Claim
+    template_name = 'agent/agent_claim_detail.html'
+    context_object_name = 'claim'
+    
+    def test_func(self):
+        # Only staff users who are not superusers can access
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def get_queryset(self):
+        # Only allow access to claims for policies assigned to this agent
+        return Claim.objects.filter(customer_policy__agent=self.request.user)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        claim = self.get_object()
+        
+        # Get all documents for this claim
+        context['claim_documents'] = ClaimDocument.objects.filter(claim=claim)
+        
+        # Add a form for adding remarks
+        context['remark_form'] = ClaimRemarkForm(initial={'status': claim.status})
+        
+        return context
+
+
+class ClaimStatusUpdateView(LoginRequiredMixin,  View):
+    def test_func(self):
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def post(self, request, *args, **kwargs):
+        claim_id = kwargs.get('pk')
+        claim = get_object_or_404(Claim, pk=claim_id, customer_policy__agent=request.user)
+        
+        form = ClaimRemarkForm(request.POST)
+        
+        if form.is_valid():
+            new_status = form.cleaned_data['status']
+            remarks = form.cleaned_data['remarks']
+            
+            # Update claim status
+            claim.status = new_status
+            claim.remarks = remarks
+            claim.processed_by = request.user
+            claim.processed_date = timezone.now().date()
+            claim.save()
+            
+            # Create notification for customer
+            notification_type = 'claim_status'
+            title = f'Claim {claim.claim_number} Status Updated'
+            message = f'Your claim status has been updated to {claim.get_status_display()}.'
+            
+            if remarks:
+                message += f' Agent remarks: {remarks}'
+            
+            Notification.objects.create(
+                customer=claim.customer_policy.customer,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                related_policy=claim.customer_policy
+            )
+            
+            messages.success(request, f"Claim status has been updated to {claim.get_status_display()}.")
+        else:
+            messages.error(request, "There was an error updating the claim status.")
+        
+        return redirect('agent_claim_detail', pk=claim_id)    
+    
+class ClaimDocumentVerifyView(LoginRequiredMixin,  View):
+    def test_func(self):
+        return self.request.user.is_staff and not self.request.user.is_superuser
+    
+    def post(self, request, *args, **kwargs):
+        document_id = kwargs.get('pk')
+        document = get_object_or_404(ClaimDocument, pk=document_id, claim__customer_policy__agent=request.user)
+        
+        # Mark document as verified
+        document.verified = True
+        document.verified_by = request.user
+        document.verified_at = timezone.now()
+        document.save()
+        
+        messages.success(request, f"Document has been verified.")
+        return redirect('agent_claim_detail', pk=document.claim.id)    
+    
+
+
+
+class AdminApprovedClaimsView(LoginRequiredMixin,  ListView):
+    model = Claim
+    template_name = 'admin/admin_approved_claims.html'
+    context_object_name = 'claims'
+    paginate_by = 10
+    
+    def test_func(self):
+        # Only superusers or staff can access
+        return self.request.user.is_superuser or self.request.user.is_staff
+    
+    def get_queryset(self):
+        # Return only approved claims that have not been paid yet
+        return Claim.objects.filter(
+            status='approved'
+        ).select_related('customer_policy', 'customer_policy__customer', 'customer_policy__policy').order_by('-processed_date')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Count total amount of approved claims
+        total_amount = sum(claim.claim_amount for claim in self.get_queryset())
+        context['total_approved_amount'] = total_amount
+        context['claims_count'] = self.get_queryset().count()
+        return context    
+    
+class ProcessClaimPaymentView(LoginRequiredMixin,View):
+    def test_func(self):
+        # Only superusers or staff can access
+        return self.request.user.is_superuser or self.request.user.is_staff
+    
+    def get(self, request, *args, **kwargs):
+        claim_id = kwargs.get('pk')
+        claim = get_object_or_404(Claim, pk=claim_id, status='approved')
+        
+        # Get form with initial values
+        form = ClaimPaymentForm(initial={
+            'claim_amount': claim.claim_amount,
+            'transaction_id': f"PAY{timezone.now().strftime('%Y%m%d')}{random.randint(1000, 9999)}"
+        })
+        
+        return render(request, 'process_claim_payment.html', {
+            'form': form,
+            'claim': claim
+        })
+    
+    def post(self, request, *args, **kwargs):
+        claim_id = kwargs.get('pk')
+        claim = get_object_or_404(Claim, pk=claim_id, status='approved')
+        
+        form = ClaimPaymentForm(request.POST)
+        
+        if form.is_valid():
+            # Update claim status to paid
+            claim.status = 'paid'
+            claim.updated_at = timezone.now()
+            claim.remarks = f"{claim.remarks}\n\nPayment processed on {timezone.now().date()} " \
+                           f"by {request.user.get_full_name()}.\n" \
+                           f"Transaction ID: {form.cleaned_data['transaction_id']}\n" \
+                           f"Payment method: {form.cleaned_data['payment_method']}"
+            claim.save()
+            
+            # Create notification for customer
+            Notification.objects.create(
+                customer=claim.customer_policy.customer,
+                notification_type='claim_status',
+                title='Claim Payment Processed',
+                message=f'Your claim {claim.claim_number} has been paid. Amount: ₹{claim.claim_amount}. '
+                        f'Transaction ID: {form.cleaned_data["transaction_id"]}',
+                related_policy=claim.customer_policy
+            )
+            
+            messages.success(request, f"Payment for claim {claim.claim_number} has been processed successfully.")
+            return redirect('admin_approved_claims')
+        else:
+            return render(request, 'process_claim_payment.html', {
+                'form': form,
+                'claim': claim
+            })    

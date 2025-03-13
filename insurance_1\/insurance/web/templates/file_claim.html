@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">File a New Claim</h4>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">Policy Information</h5>
+                                    <p><strong>Policy Number:</strong> {{ policy.policy_number }}</p>
+                                    <p><strong>Policy Type:</strong> {{ policy.policy.name }}</p>
+                                    <p><strong>Status:</strong> 
+                                        <span class="badge {% if policy.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ policy.get_status_display }}
+                                        </span>
+                                    </p>
+                                    <p><strong>Coverage Amount:</strong> ₹{{ policy.policy.coverage_amount }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">Claim Guidelines</h5>
+                                    <ul class="mb-0">
+                                        <li>Provide accurate information about the incident</li>
+                                        <li>Upload supporting documents (medical reports, bills, etc.)</li>
+                                        <li>Claim amount cannot exceed your coverage amount</li>
+                                        <li>Claims are typically processed within 7-14 business days</li>
+                                        <li>You may be contacted for additional information</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Fields marked with <span class="text-danger">*</span> are required.
+                        </div>
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.incident_date.id_for_label }}" class="form-label">
+                                Incident Date <span class="text-danger">*</span>
+                            </label>
+                            {{ form.incident_date }}
+                            {% if form.incident_date.errors %}
+                            <div class="text-danger">
+                                {% for error in form.incident_date.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">The date when the incident occurred</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                Incident Description <span class="text-danger">*</span>
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger">
+                                {% for error in form.description.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">Provide detailed information about what happened</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.claim_amount.id_for_label }}" class="form-label">
+                                Claim Amount (₹) <span class="text-danger">*</span>
+                            </label>
+                            {{ form.claim_amount }}
+                            {% if form.claim_amount.errors %}
+                            <div class="text-danger">
+                                {% for error in form.claim_amount.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">The amount you are claiming (must be less than or equal to your coverage amount)</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.documents.id_for_label }}" class="form-label">
+                                Supporting Document <span class="text-danger">*</span>
+                            </label>
+                            {{ form.documents }}
+                            {% if form.documents.errors %}
+                            <div class="text-danger">
+                                {% for error in form.documents.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">Upload a main document to support your claim (medical report, police report, bill, etc.)</small>
+                        </div>
+                        
+                        <h5 class="mb-3">Additional Documents</h5>
+                        <p class="text-muted mb-3">You can upload additional supporting documents after submitting your claim</p>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'policy_details' policy.id %}" class="btn btn-secondary me-md-2">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-medical me-2"></i>Submit Claim
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

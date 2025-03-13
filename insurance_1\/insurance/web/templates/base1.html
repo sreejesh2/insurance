@@ -135,9 +135,9 @@
               <li><a class="dropdown-item" href="{% url 'my_policies'%}">
                   <i class="fas fa-file-contract me-2"></i>My Policies
               </a></li>
-              <li><a class="dropdown-item" href="">
-                  <i class="fas fa-clipboard-list me-2"></i>My Claims
-              </a></li>
+         <li><a class="dropdown-item" href="{% url 'my_claims'%}">
+            <i class="fas fa-clipboard-list me-2"></i>My Claims
+        </a></li>
               <li><hr class="dropdown-divider"></li>
               <li>
                   <form method="post" action="{% url 'logout' %}">

@@ -80,12 +80,12 @@
               <li class="nav-item active">
                 <a
                  
-                  href="{% url 'dashboard'%}"
+                  href="{% url 'agent_policies' %}"
                   class="collapsed"
                  
                 >
                   <i class="fas fa-home"></i>
-                  <p>Dashboard</p>
+                  <p>My Policies</p>
                  
                 </a>
                 
@@ -93,65 +93,18 @@
               <li class="nav-item active">
                 <a
                  
-                  href="{% url 'category_list'%}"
+                  href="{% url 'agent_claims' %}"
                   class="collapsed"
                  
                 >
-                <i class="fa-brands fa-magento"></i>
-                  <p>Service Category</p>
+                  <i class="fas fa-home"></i>
+                  <p>Claims Management</p>
                  
                 </a>
                 
               </li>
-              <li class="nav-item active">
-                <a
-                 
-                  href="{% url 'policy_list'%}"
-                  class="collapsed"
-                 
-                >
-                <i class="fa-brands fa-magento"></i>
-                  <p>Insurance Policies</p>
-                 
-                </a>
-                
-              </li>
-              <li class="nav-item active">
-                <a
-                 
-                  href="{% url 'admin_agents'%}"
-                  class="collapsed"
-                 
-                >
-                <i class="fa-brands fa-magento"></i>
-                  <p>Policy Agents</p>
-                 
-                </a>
-                
-              </li>
-              <li class="nav-item active">
-                <a
-                 
-                  href="{% url 'admin_approved_claims' %}"
-                  class="collapsed"
-                 
-                >
-                <i class="fa-brands fa-magento"></i>
-                  <p>Process Claim Payments</p>
-                 
-                </a>
-                
-              </li>
-
-
-              {% comment %} <li class="nav-item">
-                <a class="nav-link" href="">
-                    <i class="fas fa-money-bill-wave me-2"></i>
-                    {% if approved_claims_count > 0 %}
-                    <span class="badge bg-danger">{{ approved_claims_count }}</span>
-                    {% endif %}
-                </a>
-            </li> {% endcomment %}
+    
+              
               {% comment %} <li class="nav-item active">
                 <a
                  
@@ -257,7 +210,7 @@
                     </div>
                     <span class="profile-username">
                       <span class="op-7">Hi,</span>
-                      <span class="fw-bold">Hizrian</span>
+                      <span class="fw-bold">{{request.user.username}}</span>
                     </span>
                   </a>
                   <ul class="dropdown-menu dropdown-user animated fadeIn">
